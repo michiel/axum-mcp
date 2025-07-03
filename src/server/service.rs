@@ -22,6 +22,7 @@ use crate::{
 };
 
 /// Core MCP server implementation
+#[derive(Clone)]
 pub struct McpServer<S>
 where
     S: McpServerState,

@@ -37,8 +37,10 @@ pub trait McpHandlerState: Send + Sync + Clone + 'static {
     fn session_manager(&self) -> Option<&SessionManager>;
     
     /// Get transport health information
-    async fn transport_health(&self) -> TransportHealth {
-        TransportHealth::healthy()
+    fn transport_health(&self) -> impl std::future::Future<Output = TransportHealth> + Send {
+        async {
+            TransportHealth::healthy()
+        }
     }
     
     /// Create security context from request headers
@@ -145,7 +147,7 @@ where
     let security_context = state.create_security_context(&headers);
     
     // Handle the request
-    let response = state.mcp_server().handle_request(request, security_context).await;
+    let response: crate::protocol::JsonRpcResponse = state.mcp_server().handle_request(request, security_context).await;
     
     // For StreamableHTTP transport, store the response as an event
     if let Some(session_manager) = state.session_manager() {
@@ -210,14 +212,14 @@ where
         match result {
             Ok(progress) => {
                 let data = serde_json::to_string(&progress).unwrap_or_default();
-                Ok(Event::default()
+                Ok::<Event, std::convert::Infallible>(Event::default()
                     .event("progress")
                     .data(data)
                     .id(progress.operation_id))
             }
             Err(e) => {
                 error!("Progress stream error: {}", e);
-                Ok(Event::default()
+                Ok::<Event, std::convert::Infallible>(Event::default()
                     .event("error")
                     .data(format!("Stream error: {}", e)))
             }
@@ -272,7 +274,7 @@ where
     
     // Create event stream from stored events and new events
     let stored_events = stream::iter(events.into_iter().map(|event| {
-        Ok(Event::default()
+        Ok::<Event, std::convert::Infallible>(Event::default()
             .id(event.id)
             .event(event.event_type)
             .data(serde_json::to_string(&event.data).unwrap_or_default()))
@@ -281,7 +283,7 @@ where
     // Subscribe to new events for this session
     let session_stream = session_manager.subscribe_to_session(&session_id).await;
     let new_events = session_stream.map(|event| {
-        Ok(Event::default()
+        Ok::<Event, std::convert::Infallible>(Event::default()
             .id(event.id)
             .event(event.event_type)
             .data(serde_json::to_string(&event.data).unwrap_or_default()))
@@ -330,17 +332,25 @@ where
     }
 }
 
-/// Create MCP routes for Axum router (disabled due to compilation issues)
-// pub fn mcp_routes<S>() -> axum::Router<S>
-// where
-//     S: McpHandlerState,
-// {
-//     axum::Router::new()
-//         .route("/mcp", axum::routing::get(mcp_get_handler::<S>))
-//         .route("/mcp", axum::routing::post(mcp_post_handler::<S>))
-//         .route("/mcp", axum::routing::delete(mcp_delete_handler::<S>))
-//         .route("/mcp/sse", axum::routing::get(mcp_sse_handler::<S>))
-// }
+/// Create MCP routes for Axum router
+pub fn mcp_routes<S>() -> axum::Router<S>
+where
+    S: McpHandlerState + Clone + Send + Sync + 'static,
+{
+    axum::Router::new()
+        .route("/mcp", axum::routing::get(|State(state): State<S>, Query(params): Query<McpQueryParams>, headers: HeaderMap| async move {
+            mcp_get_handler(State(state), Query(params), headers).await
+        }))
+        .route("/mcp", axum::routing::post(|State(state): State<S>, Query(params): Query<McpQueryParams>, headers: HeaderMap, Json(request): Json<JsonRpcRequest>| async move {
+            mcp_post_handler(State(state), Query(params), headers, Json(request)).await
+        }))
+        .route("/mcp", axum::routing::delete(|State(state): State<S>, Query(params): Query<McpQueryParams>, headers: HeaderMap| async move {
+            mcp_delete_handler(State(state), Query(params), headers).await
+        }))
+        .route("/mcp/sse", axum::routing::get(|State(state): State<S>, Query(params): Query<McpQueryParams>, headers: HeaderMap| async move {
+            mcp_sse_handler(State(state), Query(params), headers).await
+        }))
+}
 
 #[cfg(test)]
 mod tests {
@@ -411,7 +421,7 @@ mod tests {
         let server = McpServer::new(config, state);
         let handler_state = TestHandlerState { server };
 
-        let router = mcp_routes().with_state(handler_state);
+        let router: axum::Router<TestHandlerState> = mcp_routes().with_state(handler_state);
         
         // Router should compile without errors
         assert_eq!(format!("{:?}", router).contains("Router"), true);

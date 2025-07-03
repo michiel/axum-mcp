@@ -1,13 +1,13 @@
 //! Generic MCP server framework with trait-based architecture
 
 pub mod config;
-// pub mod handler; // Temporarily disabled due to compilation issues
+pub mod handler;
 pub mod progress;
 pub mod registry;
 pub mod service;
 
 pub use config::McpServerConfig;
-// pub use handler::McpHandlerState; // Disabled due to compilation issues
+pub use handler::McpHandlerState;
 pub use progress::{ProgressReporter, ProgressUpdate, ProgressLevel};
 pub use registry::{ToolRegistry, ToolExecutionContext, McpTool, InMemoryToolRegistry};
 pub use service::McpServer;
