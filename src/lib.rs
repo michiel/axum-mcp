@@ -243,7 +243,7 @@ pub mod prelude {
     
     pub use crate::{
         error::{McpError, McpResult},
-        protocol::{JsonRpcRequest, JsonRpcResponse, Tool, ToolsCallResult},
+        protocol::{JsonRpcRequest, JsonRpcResponse, Tool, ToolsCallResult, ToolContent},
         security::{McpAuth, SecurityContext, ClientContext},
         server::{
             McpServerConfig, McpServerState,
