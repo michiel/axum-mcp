@@ -210,6 +210,13 @@ pub use server::{
     ToolRegistry, ToolExecutionContext, McpTool,
     ProgressReporter, ProgressUpdate, ProgressLevel,
     InMemoryToolRegistry,
+    ResourceRegistry, Resource, ResourceTemplate, ResourceContent,
+    ResourceSubscription, ResourceChanged, ResourceChangeType,
+    UriSchemeConfig, ParsedUri, MultiSchemeResourceRegistry, InMemoryResourceRegistry,
+    PromptRegistry, Prompt, PromptMessage, PromptContent, PromptParameter,
+    GetPromptRequest, GetPromptResult, PromptCategory, MessageRole,
+    EmbeddedResource, ResourceAnnotation, TemplateEngine, SimpleTemplateEngine,
+    InMemoryPromptRegistry,
 };
 
 // Re-export transport types
@@ -230,11 +237,72 @@ pub use security::{
 pub mod axum_integration {
     //! Axum-specific HTTP handlers and utilities
     
+    use crate::server::{service::McpServer, handler::McpHandlerState, McpServerState};
+    use crate::transport::streamable_http::SessionManager;
+    use crate::transport::TransportHealth;
+    
     pub use crate::server::handler::{
-        McpHandlerState, mcp_get_handler, mcp_post_handler, 
+        mcp_get_handler, mcp_post_handler, 
         mcp_sse_handler, mcp_delete_handler, mcp_routes,
         McpQueryParams, McpEndpointInfo,
     };
+    
+    /// Wrapper for McpServer that implements McpHandlerState
+    #[derive(Clone)]
+    pub struct McpServerWrapper<S: McpServerState> {
+        server: McpServer<S>,
+        session_manager: Option<SessionManager>,
+    }
+    
+    impl<S: McpServerState> McpServerWrapper<S> {
+        /// Create a new wrapper for the MCP server
+        pub fn new(server: McpServer<S>) -> Self {
+            Self {
+                server,
+                session_manager: None,
+            }
+        }
+        
+        /// Create a new wrapper with session management for StreamableHTTP
+        pub fn with_session_manager(server: McpServer<S>, session_manager: SessionManager) -> Self {
+            Self {
+                server,
+                session_manager: Some(session_manager),
+            }
+        }
+        
+        /// Get the underlying MCP server
+        pub fn server(&self) -> &McpServer<S> {
+            &self.server
+        }
+    }
+    
+    impl<S: McpServerState> McpHandlerState for McpServerWrapper<S> {
+        type ServerState = S;
+        
+        fn mcp_server(&self) -> &McpServer<Self::ServerState> {
+            &self.server
+        }
+        
+        fn session_manager(&self) -> Option<&SessionManager> {
+            self.session_manager.as_ref()
+        }
+        
+        fn transport_health(&self) -> impl std::future::Future<Output = TransportHealth> + Send {
+            async {
+                // TODO: Implement actual health check based on server state
+                TransportHealth::healthy()
+            }
+        }
+    }
+    
+    /// Convenience function to create MCP routes with wrapper
+    pub fn mcp_routes_with_wrapper<S>() -> axum::Router<McpServerWrapper<S>>
+    where
+        S: McpServerState + Clone + Send + Sync + 'static,
+    {
+        crate::server::handler::mcp_routes()
+    }
 }
 
 // Convenience re-exports for common use cases

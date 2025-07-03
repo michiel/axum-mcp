@@ -10,8 +10,7 @@ keywords = ["mcp", "axum", "llm", "ai", "protocol"]
 categories = ["web-programming", "api-bindings", "development-tools"]
 readme = "README.md"
 
-# Empty workspace to make this a standalone crate
-[workspace]
+# This crate is now part of the Ratchet workspace
 
 [dependencies]
 # Core async runtime
@@ -45,6 +44,7 @@ rand = "0.8"
 sha2 = "0.10"
 humantime-serde = "1.1"
 url = "2.5"
+urlencoding = "2.1"
 reqwest = { version = "0.12", features = ["json", "stream"] }
 async-stream = "0.3"
 anyhow = "1.0"
@@ -66,4 +66,12 @@ tracing-subscriber = "0.3"
 
 [[example]]
 name = "minimal_server"
+required-features = ["server", "transport-sse", "handlers"]
+
+[[example]]
+name = "resource_registry_example"
+required-features = ["server", "transport-sse", "handlers"]
+
+[[example]]
+name = "prompt_registry_example"
 required-features = ["server", "transport-sse", "handlers"]

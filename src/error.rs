@@ -39,6 +39,14 @@ pub enum McpError {
     #[error("Tool execution failed: {tool}: {message}")]
     ToolExecution { tool: String, message: String },
 
+    /// Resource not found
+    #[error("Resource not found: {uri}")]
+    ResourceNotFound { uri: String },
+
+    /// Invalid resource
+    #[error("Invalid resource: {uri}: {message}")]
+    InvalidResource { uri: String, message: String },
+
     /// Server timeout
     #[error("Server timeout after {timeout:?}")]
     ServerTimeout { timeout: Duration },
@@ -106,6 +114,8 @@ impl McpError {
             McpError::Authentication { .. } => StatusCode::UNAUTHORIZED,
             McpError::Authorization { .. } => StatusCode::FORBIDDEN,
             McpError::ToolNotFound { .. } => StatusCode::NOT_FOUND,
+            McpError::ResourceNotFound { .. } => StatusCode::NOT_FOUND,
+            McpError::InvalidResource { .. } => StatusCode::BAD_REQUEST,
             McpError::Validation { .. } => StatusCode::BAD_REQUEST,
             McpError::Protocol { .. } => StatusCode::BAD_REQUEST,
             McpError::Configuration { .. } => StatusCode::BAD_REQUEST,
@@ -131,6 +141,8 @@ impl McpError {
         match self {
             McpError::Protocol { .. } => -32600, // Invalid Request
             McpError::ToolNotFound { .. } => -32601, // Method not found
+            McpError::ResourceNotFound { .. } => -32601, // Method not found (resource not found)
+            McpError::InvalidResource { .. } => -32602, // Invalid params
             McpError::Validation { .. } => -32602, // Invalid params
             McpError::Authentication { .. } => -32000, // Server error (auth)
             McpError::Authorization { .. } => -32000, // Server error (authz)
@@ -147,6 +159,8 @@ impl McpError {
             McpError::Authentication { .. } => "Authentication required".to_string(),
             McpError::Authorization { .. } => "Access denied".to_string(),
             McpError::ToolNotFound { name } => format!("Tool '{}' not found", name),
+            McpError::ResourceNotFound { uri } => format!("Resource '{}' not found", uri),
+            McpError::InvalidResource { uri, message } => format!("Invalid resource '{}': {}", uri, message),
             McpError::Validation { message } => message.clone(),
             McpError::Protocol { message } => message.clone(),
             McpError::RateLimit { .. } => "Rate limit exceeded".to_string(),

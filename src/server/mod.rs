@@ -3,13 +3,26 @@
 pub mod config;
 pub mod handler;
 pub mod progress;
+pub mod prompt;
 pub mod registry;
+pub mod resource;
 pub mod service;
 
 pub use config::McpServerConfig;
 pub use handler::McpHandlerState;
 pub use progress::{ProgressReporter, ProgressUpdate, ProgressLevel};
 pub use registry::{ToolRegistry, ToolExecutionContext, McpTool, InMemoryToolRegistry};
+pub use resource::{
+    ResourceRegistry, Resource, ResourceTemplate, ResourceContent, ResourceSubscription,
+    ResourceChanged, ResourceChangeType, UriSchemeConfig, ParsedUri,
+    MultiSchemeResourceRegistry, InMemoryResourceRegistry,
+};
+pub use prompt::{
+    PromptRegistry, Prompt, PromptMessage, PromptContent, PromptParameter,
+    GetPromptRequest, GetPromptResult, PromptCategory, MessageRole,
+    EmbeddedResource, ResourceAnnotation, TemplateEngine, SimpleTemplateEngine,
+    InMemoryPromptRegistry,
+};
 pub use service::McpServer;
 
 use async_trait::async_trait;
@@ -21,7 +34,8 @@ use crate::{
     protocol::{
         ClientCapabilities, InitializeParams, InitializeResult, McpCapabilities, 
         ServerCapabilities, ServerInfo, Tool, ToolsCallResult, ToolsListResult,
-        BatchRequest, BatchResult, JsonRpcRequest, JsonRpcResponse
+        BatchRequest, BatchResult, JsonRpcRequest, JsonRpcResponse,
+        messages
     },
     security::{SecurityContext, McpAuth},
 };
@@ -44,6 +58,16 @@ pub trait McpServerState: Send + Sync + Clone + 'static {
     /// Get the authentication manager instance
     fn auth_manager(&self) -> &Self::AuthManager;
     
+    /// Get the resource registry instance (optional)
+    fn resource_registry(&self) -> Option<&dyn ResourceRegistry> {
+        None
+    }
+    
+    /// Get the prompt registry instance (optional)
+    fn prompt_registry(&self) -> Option<&dyn PromptRegistry> {
+        None
+    }
+    
     /// Get server information for the initialize response
     fn server_info(&self) -> ServerInfo {
         ServerInfo {
@@ -58,8 +82,21 @@ pub trait McpServerState: Send + Sync + Clone + 'static {
         ServerCapabilities {
             experimental: HashMap::new(),
             logging: None,
-            prompts: None,
-            resources: None,
+            prompts: if self.prompt_registry().is_some() {
+                Some(messages::PromptsCapability {
+                    list_changed: false,
+                })
+            } else {
+                None
+            },
+            resources: if self.resource_registry().is_some() {
+                Some(messages::ResourcesCapability {
+                    subscribe: true,
+                    list_changed: false,
+                })
+            } else {
+                None
+            },
             tools: Some(crate::protocol::ToolsCapability {
                 list_changed: false,
             }),

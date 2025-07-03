@@ -6,7 +6,7 @@
 
 use axum_mcp::{
     prelude::*,
-    axum_integration::mcp_routes,
+    axum_integration::{mcp_routes_with_wrapper, McpServerWrapper},
     server::{config::McpServerConfig, service::McpServer},
 };
 use std::collections::HashMap;
@@ -166,11 +166,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create MCP server
     let mcp_server = McpServer::new(config, state);
+    
+    // Wrap the server for Axum integration
+    let server_wrapper = McpServerWrapper::new(mcp_server);
 
     // Create Axum app with MCP routes
     let app = axum::Router::new()
-        .merge(mcp_routes())
-        .with_state(mcp_server);
+        .merge(mcp_routes_with_wrapper())
+        .with_state(server_wrapper);
 
     // Start the server
     println!("Starting MCP server on http://0.0.0.0:3000");

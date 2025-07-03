@@ -182,6 +182,7 @@ impl StreamableHttpSession {
 }
 
 /// Session manager for handling multiple streamable HTTP sessions
+#[derive(Clone)]
 pub struct SessionManager {
     sessions: Arc<RwLock<HashMap<String, Arc<StreamableHttpSession>>>>,
     event_store: Arc<dyn EventStore>,
