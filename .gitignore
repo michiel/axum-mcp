@@ -1,0 +1,5 @@
+target/
+**.log
+tmp/
+*.db
+node_modules/

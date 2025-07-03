@@ -220,6 +220,16 @@ impl From<anyhow::Error> for McpError {
     }
 }
 
+impl From<McpError> for crate::protocol::JsonRpcError {
+    fn from(err: McpError) -> Self {
+        crate::protocol::JsonRpcError {
+            code: err.error_code(),
+            message: err.client_message(),
+            data: None,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

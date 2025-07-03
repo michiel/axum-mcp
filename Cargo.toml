@@ -4,47 +4,50 @@ version = "0.1.0"
 edition = "2021"
 description = "Generic MCP (Model Context Protocol) implementation with Axum integration"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/ratchet-runner/ratchet"
+repository = "https://github.com/michiel/axum-mcp"
 authors = ["Ratchet Contributors"]
 keywords = ["mcp", "axum", "llm", "ai", "protocol"]
 categories = ["web-programming", "api-bindings", "development-tools"]
 readme = "README.md"
 
+# Empty workspace to make this a standalone crate
+[workspace]
+
 [dependencies]
 # Core async runtime
-tokio = { workspace = true }
-async-trait = { workspace = true }
+tokio = { version = "1.0", features = ["full"] }
+async-trait = "0.1"
 
 # Serialization and JSON handling
-serde = { workspace = true }
-serde_json = { workspace = true }
-uuid = { workspace = true }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+uuid = { version = "1.0", features = ["v4"] }
 
 # HTTP client and server  
-axum = { workspace = true }
-tower-http = { workspace = true }
-http = { workspace = true }
+axum = { version = "0.7", features = ["json"] }
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+http = "1.0"
 futures-util = "0.3"
-async-stream = "0.3"
-reqwest = { workspace = true }
 
 # Logging and tracing
-tracing = { workspace = true }
+tracing = "0.1"
 
 # Error handling
-thiserror = { workspace = true }
-anyhow = { workspace = true }
+thiserror = "1.0"
 
 # Time handling
-chrono = { workspace = true }
+chrono = { version = "0.4", features = ["serde"] }
 
 # Additional dependencies for transport
-url = { workspace = true }
-tokio-stream = { workspace = true, features = ["sync"] }
+tokio-stream = { version = "0.1", features = ["sync"] }
 base64 = "0.22"
 rand = "0.8"
 sha2 = "0.10"
 humantime-serde = "1.1"
+url = "2.5"
+reqwest = { version = "0.12", features = ["json", "stream"] }
+async-stream = "0.3"
+anyhow = "1.0"
 
 [features]
 default = ["server", "client", "transport-stdio", "transport-sse", "transport-streamable-http", "handlers"]

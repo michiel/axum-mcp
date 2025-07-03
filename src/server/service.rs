@@ -8,17 +8,16 @@ use tracing::{debug, error, info, warn};
 use crate::{
     error::{McpError, McpResult},
     protocol::{
-        InitializeParams, InitializeResult, JsonRpcRequest, JsonRpcResponse, 
-        StandardMethod, Tool, ToolsCallParams, ToolsCallResult, 
-        ToolsListResult, BatchRequest, BatchResult, BatchItemResult,
-        generate_request_id,
+        InitializeParams, JsonRpcRequest, JsonRpcResponse, 
+        StandardMethod, ToolsCallParams, 
+        ToolsListResult, BatchParams, BatchResult, BatchItemResult,
     },
     security::{SecurityContext, McpAuth},
     server::{
         config::McpServerConfig, 
         registry::{ToolRegistry, ToolExecutionContext},
         progress::{ProgressReporter, ProgressUpdate},
-        McpServerState, BatchContext, BatchExecutionMode, ServerHealth,
+        McpServerState, ServerHealth, BatchContext,
     },
 };
 
@@ -78,19 +77,20 @@ where
     }
     
     /// Handle an MCP JSON-RPC request
-    pub async fn handle_request(&self, request: JsonRpcRequest, context: SecurityContext) -> JsonRpcResponse {
+    pub fn handle_request(&self, request: JsonRpcRequest, context: SecurityContext) -> std::pin::Pin<Box<dyn std::future::Future<Output = JsonRpcResponse> + Send + '_>> {
+        Box::pin(async move {
         debug!("Handling MCP request: {} (id: {:?})", request.method, request.id);
         
         // Authenticate and authorize the request
         if let Err(error) = self.validate_request(&request, &context).await {
-            return JsonRpcResponse::error(request.id, error.into());
+            return JsonRpcResponse::error(error.into(), request.id);
         }
         
         // Parse the method
         let method = match self.parse_method(&request.method) {
             Ok(method) => method,
             Err(error) => {
-                return JsonRpcResponse::error(request.id, error.into());
+                return JsonRpcResponse::error(error.into(), request.id);
             }
         };
         
@@ -106,13 +106,14 @@ where
         
         // Convert result to JSON-RPC response
         match result {
-            Ok(Some(value)) => JsonRpcResponse::success(request.id, value),
-            Ok(None) => JsonRpcResponse::success(request.id, serde_json::Value::Null),
+            Ok(Some(value)) => JsonRpcResponse::success(value, request.id),
+            Ok(None) => JsonRpcResponse::success(serde_json::Value::Null, request.id),
             Err(error) => {
                 error!("Request failed: {} - {}", request.method, error);
-                JsonRpcResponse::error(request.id, error.into())
+                JsonRpcResponse::error(error.into(), request.id)
             }
         }
+        })
     }
     
     /// Handle a standard MCP method
@@ -151,7 +152,7 @@ where
             
             StandardMethod::ToolsList => {
                 let tools = self.state.tool_registry().list_tools(context).await?;
-                let result = ToolsListResult { tools };
+                let result = ToolsListResult { tools, next_cursor: None };
                 Ok(Some(serde_json::to_value(result)?))
             }
             
@@ -183,7 +184,7 @@ where
                     });
                 }
                 
-                let batch_params: BatchRequest = if let Some(params) = params {
+                let batch_params: BatchParams = if let Some(params) = params {
                     serde_json::from_value(params).map_err(|e| McpError::Protocol {
                         message: format!("Invalid batch params: {}", e),
                     })?
@@ -209,28 +210,33 @@ where
     /// Handle a batch request
     async fn handle_batch_request(
         &self,
-        batch: BatchRequest,
+        batch: BatchParams,
         context: &SecurityContext,
     ) -> McpResult<BatchResult> {
-        if batch.items.len() > self.config.max_batch_size {
+        if batch.requests.len() > self.config.max_batch_size {
             return Err(McpError::Validation {
                 message: format!(
                     "Batch size {} exceeds maximum {}",
-                    batch.items.len(),
+                    batch.requests.len(),
                     self.config.max_batch_size
                 ),
             });
         }
         
         let batch_context = BatchContext {
-            mode: batch.mode.unwrap_or(BatchExecutionMode::Parallel),
-            max_parallel: batch.max_parallel,
-            timeout: batch.timeout.map(|secs| std::time::Duration::from_secs(secs as u64)),
+            mode: match batch.execution_mode {
+                crate::protocol::BatchExecutionMode::Parallel => crate::server::BatchExecutionMode::Parallel,
+                crate::protocol::BatchExecutionMode::Sequential => crate::server::BatchExecutionMode::Sequential,
+                crate::protocol::BatchExecutionMode::Dependency => crate::server::BatchExecutionMode::Sequential,
+                crate::protocol::BatchExecutionMode::PriorityDependency => crate::server::BatchExecutionMode::Sequential,
+            },
+            max_parallel: batch.max_parallel.map(|v| v as usize),
+            timeout: batch.timeout_ms.map(|ms| std::time::Duration::from_millis(ms)),
             security: context.clone(),
         };
         
         let progress_id = uuid::Uuid::new_v4().to_string();
-        let total_items = batch.items.len();
+        let total_items = batch.requests.len();
         
         // Send initial progress update
         self.progress_reporter.report_progress(ProgressUpdate::started(
@@ -239,12 +245,13 @@ where
             total_items,
         )).await;
         
+        let batch_requests = batch.requests.clone();
         let results = match batch_context.mode {
-            BatchExecutionMode::Parallel => {
-                self.execute_batch_parallel(batch.items, &batch_context, &progress_id).await
+            crate::server::BatchExecutionMode::Parallel => {
+                self.execute_batch_parallel(batch_requests, &batch_context, &progress_id).await
             }
-            BatchExecutionMode::Sequential | BatchExecutionMode::FailFast => {
-                self.execute_batch_sequential(batch.items, &batch_context, &progress_id).await
+            crate::server::BatchExecutionMode::Sequential | crate::server::BatchExecutionMode::FailFast => {
+                self.execute_batch_sequential(batch_requests, &batch_context, &progress_id).await
             }
         };
         
@@ -254,20 +261,29 @@ where
             "Batch request completed".to_string(),
         )).await;
         
+        let successful_count = results.iter().filter(|r| r.error.is_none()).count() as u32;
+        let failed_count = results.iter().filter(|r| r.error.is_some()).count() as u32;
+        
         Ok(BatchResult {
-            results,
             stats: crate::protocol::BatchStats {
-                total: total_items,
-                successful: results.iter().filter(|r| r.error.is_none()).count(),
-                failed: results.iter().filter(|r| r.error.is_some()).count(),
+                total_requests: total_items as u32,
+                successful_requests: successful_count,
+                failed_requests: failed_count,
+                skipped_requests: 0,
+                total_execution_time_ms: 0, // TODO: Calculate actual time
+                average_execution_time_ms: 0.0, // TODO: Calculate actual time
+                max_parallel_executed: batch_context.max_parallel.unwrap_or(1) as u32,
             },
+            results,
+            correlation_token: None,
+            metadata: std::collections::HashMap::new(),
         })
     }
     
     /// Execute batch items in parallel
     async fn execute_batch_parallel(
         &self,
-        items: Vec<JsonRpcRequest>,
+        items: Vec<crate::protocol::BatchRequest>,
         context: &BatchContext,
         progress_id: &str,
     ) -> Vec<BatchItemResult> {
@@ -278,7 +294,38 @@ where
         
         stream::iter(items)
             .map(|item| async move {
-                let result = self.handle_request(item.clone(), context.security.clone()).await;
+                // Prevent batch requests within batch requests to avoid recursion
+                if item.method == "batch" {
+                    completed += 1;
+                    
+                    // Report progress
+                    self.progress_reporter.report_progress(ProgressUpdate::progress(
+                        progress_id.to_string(),
+                        format!("Processed {} items", completed),
+                        completed,
+                    )).await;
+                    
+                    return BatchItemResult {
+                        id: item.id,
+                        result: None,
+                        error: Some(crate::protocol::JsonRpcError {
+                            code: -32600,
+                            message: "Nested batch requests are not allowed".to_string(),
+                            data: None,
+                        }),
+                        execution_time_ms: 0,
+                        skipped: false,
+                        metadata: HashMap::new(),
+                    };
+                }
+                
+                let json_rpc_request = crate::protocol::JsonRpcRequest {
+                    jsonrpc: "2.0".to_string(),
+                    method: item.method.clone(),
+                    params: item.params.clone(),
+                    id: Some(serde_json::Value::String(item.id.clone())),
+                };
+                let result = self.handle_request(json_rpc_request, context.security.clone()).await;
                 completed += 1;
                 
                 // Report progress
@@ -289,7 +336,7 @@ where
                 )).await;
                 
                 BatchItemResult {
-                    id: item.id.unwrap_or_else(|| uuid::Uuid::new_v4().to_string()),
+                    id: item.id,
                     result: if result.error.is_none() { result.result } else { None },
                     error: result.error,
                     execution_time_ms: 0, // TODO: Add timing
@@ -305,18 +352,52 @@ where
     /// Execute batch items sequentially
     async fn execute_batch_sequential(
         &self,
-        items: Vec<JsonRpcRequest>,
+        items: Vec<crate::protocol::BatchRequest>,
         context: &BatchContext,
         progress_id: &str,
     ) -> Vec<BatchItemResult> {
         let mut results = Vec::with_capacity(items.len());
-        let fail_fast = matches!(context.mode, BatchExecutionMode::FailFast);
+        let stop_on_error = context.security.client.metadata.get("stop_on_error")
+            .map(|v| v.as_str() == "true")
+            .unwrap_or(false);
         
         for (index, item) in items.into_iter().enumerate() {
-            let result = self.handle_request(item.clone(), context.security.clone()).await;
+            // Prevent batch requests within batch requests to avoid recursion
+            if item.method == "batch" {
+                let batch_result = BatchItemResult {
+                    id: item.id,
+                    result: None,
+                    error: Some(crate::protocol::JsonRpcError {
+                        code: -32600,
+                        message: "Nested batch requests are not allowed".to_string(),
+                        data: None,
+                    }),
+                    execution_time_ms: 0,
+                    skipped: false,
+                    metadata: HashMap::new(),
+                };
+                results.push(batch_result);
+                
+                // Report progress
+                self.progress_reporter.report_progress(ProgressUpdate::progress(
+                    progress_id.to_string(),
+                    format!("Processed {} items", index + 1),
+                    index + 1,
+                )).await;
+                
+                continue;
+            }
+            
+            let json_rpc_request = crate::protocol::JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                method: item.method.clone(),
+                params: item.params.clone(),
+                id: Some(serde_json::Value::String(item.id.clone())),
+            };
+            let result = self.handle_request(json_rpc_request, context.security.clone()).await;
             
             let batch_result = BatchItemResult {
-                id: item.id.unwrap_or_else(|| uuid::Uuid::new_v4().to_string()),
+                id: item.id,
                 result: if result.error.is_none() { result.result } else { None },
                 error: result.error.clone(),
                 execution_time_ms: 0, // TODO: Add timing
@@ -333,8 +414,8 @@ where
                 index + 1,
             )).await;
             
-            // Stop on first error if fail-fast mode
-            if fail_fast && result.error.is_some() {
+            // Stop on first error if stop_on_error is true
+            if stop_on_error && result.error.is_some() {
                 break;
             }
         }

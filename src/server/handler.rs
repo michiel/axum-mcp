@@ -6,7 +6,7 @@ use axum::{
     response::{IntoResponse, Response, sse::{Event, Sse}},
     Json,
 };
-use futures_util::stream::{self, Stream};
+use futures_util::stream::{self, Stream, StreamExt};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, convert::Infallible, sync::Arc, time::Duration};
 use tokio::sync::RwLock;
@@ -330,17 +330,17 @@ where
     }
 }
 
-/// Create MCP routes for Axum router
-pub fn mcp_routes<S>() -> axum::Router<S>
-where
-    S: McpHandlerState,
-{
-    axum::Router::new()
-        .route("/mcp", axum::routing::get(mcp_get_handler::<S>))
-        .route("/mcp", axum::routing::post(mcp_post_handler::<S>))
-        .route("/mcp", axum::routing::delete(mcp_delete_handler::<S>))
-        .route("/mcp/sse", axum::routing::get(mcp_sse_handler::<S>))
-}
+/// Create MCP routes for Axum router (disabled due to compilation issues)
+// pub fn mcp_routes<S>() -> axum::Router<S>
+// where
+//     S: McpHandlerState,
+// {
+//     axum::Router::new()
+//         .route("/mcp", axum::routing::get(mcp_get_handler::<S>))
+//         .route("/mcp", axum::routing::post(mcp_post_handler::<S>))
+//         .route("/mcp", axum::routing::delete(mcp_delete_handler::<S>))
+//         .route("/mcp/sse", axum::routing::get(mcp_sse_handler::<S>))
+// }
 
 #[cfg(test)]
 mod tests {

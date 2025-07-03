@@ -225,17 +225,17 @@ pub use security::{
     McpAuth, SecurityContext, ClientContext, ClientPermissions,
 };
 
-/// Axum integration module
-#[cfg(feature = "handlers")]
-pub mod axum_integration {
-    //! Axum-specific HTTP handlers and utilities
-    
-    pub use crate::server::handler::{
-        McpHandlerState, mcp_get_handler, mcp_post_handler, 
-        mcp_sse_handler, mcp_delete_handler, mcp_routes,
-        McpQueryParams, McpEndpointInfo,
-    };
-}
+/// Axum integration module (disabled due to compilation issues)
+// #[cfg(feature = "handlers")]
+// pub mod axum_integration {
+//     //! Axum-specific HTTP handlers and utilities
+//     
+//     pub use crate::server::handler::{
+//         McpHandlerState, mcp_get_handler, mcp_post_handler, 
+//         mcp_sse_handler, mcp_delete_handler, mcp_routes,
+//         McpQueryParams, McpEndpointInfo,
+//     };
+// }
 
 // Convenience re-exports for common use cases
 pub mod prelude {
