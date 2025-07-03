@@ -146,6 +146,12 @@ where
                 Ok(None)
             }
             
+            StandardMethod::NotificationsInitialized => {
+                // Alternative initialization notification - no response needed
+                info!("Client initialized successfully (via notifications/initialized)");
+                Ok(None)
+            }
+            
             StandardMethod::Ping => {
                 // Simple ping/pong for health checking
                 Ok(Some(serde_json::json!({"status": "pong"})))
@@ -197,6 +203,121 @@ where
                 
                 let result = self.handle_batch_request(batch_params, context).await?;
                 Ok(Some(serde_json::to_value(result)?))
+            }
+            
+            StandardMethod::ResourcesList => {
+                if let Some(resource_registry) = self.state.resource_registry() {
+                    let templates = resource_registry.list_resource_templates(context).await?;
+                    let result = crate::protocol::ResourcesListResult { 
+                        resources: templates.into_iter().map(|template| {
+                            crate::protocol::messages::Resource {
+                                uri: template.uri_template,
+                                name: template.name,
+                                description: template.description,
+                                mime_type: template.mime_type,
+                                metadata: template.metadata,
+                            }
+                        }).collect(),
+                        next_cursor: None,
+                    };
+                    Ok(Some(serde_json::to_value(result)?))
+                } else {
+                    Err(McpError::Protocol {
+                        message: "Resources not supported by this server".to_string(),
+                    })
+                }
+            }
+            
+            StandardMethod::ResourcesRead => {
+                if let Some(resource_registry) = self.state.resource_registry() {
+                    let read_params: crate::protocol::ResourcesReadParams = if let Some(params) = params {
+                        serde_json::from_value(params).map_err(|e| McpError::Protocol {
+                            message: format!("Invalid resources/read params: {}", e),
+                        })?
+                    } else {
+                        return Err(McpError::Protocol {
+                            message: "resources/read requires parameters".to_string(),
+                        });
+                    };
+                    
+                    let resource = resource_registry.get_resource(&read_params.uri, context).await?;
+                    
+                    // Convert ResourceContent from server to protocol
+                    let protocol_content = match resource.content {
+                        crate::server::resource::ResourceContent::Text { text } => {
+                            crate::protocol::messages::ResourceContent::Text { 
+                                text,
+                                uri: resource.uri.clone(),
+                                mime_type: resource.mime_type,
+                            }
+                        }
+                        crate::server::resource::ResourceContent::Blob { blob, mime_type } => {
+                            crate::protocol::messages::ResourceContent::Blob { 
+                                blob,
+                                uri: resource.uri.clone(),
+                                mime_type,
+                            }
+                        }
+                    };
+                    
+                    let result = crate::protocol::ResourcesReadResult {
+                        contents: vec![protocol_content],
+                    };
+                    Ok(Some(serde_json::to_value(result)?))
+                } else {
+                    Err(McpError::Protocol {
+                        message: "Resources not supported by this server".to_string(),
+                    })
+                }
+            }
+            
+            StandardMethod::PromptsList => {
+                if let Some(prompt_registry) = self.state.prompt_registry() {
+                    let prompts = prompt_registry.list_prompts(context).await?;
+                    // For now, return a simple JSON response since the framework doesn't have PromptsListResult
+                    let result = serde_json::json!({
+                        "prompts": prompts.into_iter().map(|prompt| {
+                            serde_json::json!({
+                                "name": prompt.name,
+                                "description": prompt.description,
+                                "arguments": prompt.parameters.into_iter().map(|param| {
+                                    serde_json::json!({
+                                        "name": param.name,
+                                        "description": param.description,
+                                        "required": param.required,
+                                        "schema": param.schema
+                                    })
+                                }).collect::<Vec<_>>()
+                            })
+                        }).collect::<Vec<_>>()
+                    });
+                    Ok(Some(result))
+                } else {
+                    Err(McpError::Protocol {
+                        message: "Prompts not supported by this server".to_string(),
+                    })
+                }
+            }
+            
+            StandardMethod::PromptsGet => {
+                if let Some(prompt_registry) = self.state.prompt_registry() {
+                    let get_params: crate::server::prompt::GetPromptRequest = if let Some(params) = params {
+                        serde_json::from_value(params).map_err(|e| McpError::Protocol {
+                            message: format!("Invalid prompts/get params: {}", e),
+                        })?
+                    } else {
+                        return Err(McpError::Protocol {
+                            message: "prompts/get requires parameters".to_string(),
+                        });
+                    };
+                    
+                    let result = prompt_registry.get_prompt_with_args(get_params, context).await?;
+                    Ok(Some(serde_json::to_value(result)?))
+                } else {
+                    Err(McpError::Protocol {
+                        message: "Prompts not supported by this server".to_string(),
+                    })
+                }
             }
             
             _ => {

@@ -104,6 +104,8 @@ pub enum StandardMethod {
     LoggingSetLevel,
 
     // Notification methods
+    #[serde(rename = "notifications/initialized")]
+    NotificationsInitialized,
     #[serde(rename = "notifications/cancelled")]
     NotificationsCancelled,
     #[serde(rename = "notifications/progress")]
@@ -133,6 +135,7 @@ impl StandardMethod {
     pub fn is_notification(&self) -> bool {
         match self {
             StandardMethod::Initialized
+            | StandardMethod::NotificationsInitialized
             | StandardMethod::NotificationsCancelled
             | StandardMethod::NotificationsProgress
             | StandardMethod::NotificationsMessage

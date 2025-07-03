@@ -4,8 +4,8 @@
 
 This roadmap outlines the development priorities for the axum-mcp framework to achieve complete MCP (Model Context Protocol) specification compliance and provide a production-ready foundation for MCP servers.
 
-**Current Status**: ~70% MCP spec implementation with solid core infrastructure
-**Target**: Complete MCP specification with comprehensive feature set
+**Current Status**: ~90% MCP spec implementation with comprehensive feature set ✅
+**Target**: Complete MCP specification with advanced integrations
 
 ---
 
@@ -13,33 +13,36 @@ This roadmap outlines the development priorities for the axum-mcp framework to a
 
 ### P0 - Essential Functionality Gaps
 
-#### 🔴 **Fix Axum Integration (URGENT)**
-- **Issue**: HTTP handlers currently disabled due to compilation issues
-- **Impact**: Core HTTP/SSE transport functionality unavailable
-- **Tasks**:
-  - Resolve compilation errors in `src/axum_integration.rs`
-  - Enable `mcp_routes()` function and HTTP handlers
-  - Test HTTP POST + SSE response functionality
-  - Validate Claude Desktop compatibility
+#### ✅ **~~Fix Axum Integration~~ (COMPLETED)**
+- **Status**: HTTP handlers now fully functional ✅
+- **Completed**:
+  - ✅ Resolved all compilation errors 
+  - ✅ Enabled `mcp_routes()` function and HTTP handlers
+  - ✅ HTTP POST + SSE response functionality working
+  - ✅ Claude Desktop compatibility validated
+  - ✅ StreamableHTTP transport operational
 
-#### 🔴 **Resource Registry Implementation**
-- **Current State**: Protocol definitions exist, no implementations
-- **Required**:
-  - Create `ResourceRegistry` trait similar to `ToolRegistry`
-  - Implement `InMemoryResourceRegistry` as default
-  - Add file system resource provider (`FileSystemResourceProvider`)
-  - Add HTTP resource provider (`HttpResourceProvider`)
-  - Support for `layercake://` URI scheme and custom schemes
-  - Resource content streaming and caching
+#### ✅ **~~Resource Registry Implementation~~ (COMPLETED)**
+- **Status**: Complete implementation with advanced features ✅
+- **Completed**:
+  - ✅ `ResourceRegistry` trait with full CRUD operations
+  - ✅ `InMemoryResourceRegistry` as default implementation
+  - ✅ `MultiSchemeResourceRegistry` for multiple URI schemes
+  - ✅ `UriSchemeConfig` for custom schemes (ratchet://, layercake://, etc.)
+  - ✅ Resource content streaming and metadata support
+  - ✅ Resource templates for dynamic discovery
+  - ✅ Change notifications and subscriptions
 
-#### 🔴 **Prompt Registry Implementation**
-- **Current State**: Protocol structures defined, no execution logic
-- **Required**:
-  - Create `PromptRegistry` trait for prompt management
-  - Implement template-based prompt system with argument substitution
-  - Add `InMemoryPromptRegistry` as default
-  - Support dynamic prompt generation with context data
-  - Integration with tool execution for AI-assisted workflows
+#### ✅ **~~Prompt Registry Implementation~~ (COMPLETED)**
+- **Status**: Complete with sophisticated template system ✅
+- **Completed**:
+  - ✅ `PromptRegistry` trait for prompt management
+  - ✅ Template-based system with `SimpleTemplateEngine`
+  - ✅ `InMemoryPromptRegistry` as default implementation
+  - ✅ Parameter substitution with JSON schema validation
+  - ✅ Embedded resource support within prompts
+  - ✅ Workflow templates and prompt categories
+  - ✅ Integration with tool execution workflows
 
 ### P1 - Core Enhancement
 
