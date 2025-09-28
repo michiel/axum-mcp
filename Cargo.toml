@@ -22,9 +22,9 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 uuid = { version = "1.0", features = ["v4"] }
 
-# HTTP client and server  
-axum = { version = "0.7", features = ["json", "macros"] }
-tower-http = { version = "0.5", features = ["cors", "trace"] }
+# HTTP client and server
+axum = { version = "0.8", features = ["json", "macros"] }
+tower-http = { version = "0.6", features = ["cors", "trace"] }
 http = "1.0"
 futures-util = "0.3"
 
@@ -60,7 +60,7 @@ handlers = []
 
 [dev-dependencies]
 tokio-test = "0.4"
-tower = "0.4"
+tower = "0.5"
 hyper = "1.0"
 tracing-subscriber = "0.3"
 

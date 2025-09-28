@@ -6,17 +6,15 @@ use axum::{
     response::{IntoResponse, Response, sse::{Event, Sse}},
     Json,
 };
-use futures_util::stream::{self, Stream, StreamExt};
+use futures_util::stream::{self, StreamExt};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, convert::Infallible, sync::Arc, time::Duration};
-use tokio::sync::RwLock;
+use std::{collections::HashMap, time::Duration};
 use tokio_stream::wrappers::BroadcastStream;
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
 use crate::{
-    error::{McpError, McpResult},
-    protocol::{JsonRpcRequest, JsonRpcResponse},
+    protocol::JsonRpcRequest,
     security::{SecurityContext, ClientContext},
     server::{service::McpServer, McpServerState},
     transport::{
