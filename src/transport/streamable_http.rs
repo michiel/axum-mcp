@@ -250,7 +250,7 @@ impl SessionManager {
     }
     
     /// Subscribe to session events (returns a stream)
-    pub async fn subscribe_to_session(&self, session_id: &str) -> impl futures_util::Stream<Item = McpEvent> {
+    pub async fn subscribe_to_session(&self, _session_id: &str) -> impl futures_util::Stream<Item = McpEvent> {
         use futures_util::stream;
         
         // For now, return an empty stream as a placeholder

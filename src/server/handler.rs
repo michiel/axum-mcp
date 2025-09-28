@@ -92,7 +92,7 @@ pub struct McpEndpointInfo {
 pub async fn mcp_get_handler<S>(
     State(state): State<S>,
     Query(params): Query<McpQueryParams>,
-    headers: HeaderMap,
+    _headers: HeaderMap,
 ) -> impl IntoResponse
 where
     S: McpHandlerState,

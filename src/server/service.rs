@@ -1,9 +1,8 @@
 //! Core MCP server implementation
 
-use async_trait::async_trait;
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info};
 
 use crate::{
     error::{McpError, McpResult},
@@ -12,7 +11,7 @@ use crate::{
         StandardMethod, ToolsCallParams, 
         ToolsListResult, BatchParams, BatchResult, BatchItemResult,
     },
-    security::{SecurityContext, McpAuth},
+    security::{SecurityContext},
     server::{
         config::McpServerConfig, 
         registry::{ToolRegistry, ToolExecutionContext},

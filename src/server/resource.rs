@@ -310,6 +310,7 @@ pub struct InMemoryResourceRegistry {
     scheme_config: UriSchemeConfig,
     resources: HashMap<String, Resource>,
     templates: Vec<ResourceTemplate>,
+    #[allow(dead_code)]
     subscriptions: HashMap<String, ResourceSubscription>,
 }
 

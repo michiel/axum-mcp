@@ -27,14 +27,13 @@ pub use service::McpServer;
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 use crate::{
     error::{McpError, McpResult},
     protocol::{
-        ClientCapabilities, InitializeParams, InitializeResult, McpCapabilities, 
-        ServerCapabilities, ServerInfo, Tool, ToolsCallResult, ToolsListResult,
-        BatchRequest, BatchResult, JsonRpcRequest, JsonRpcResponse,
+        InitializeParams, InitializeResult,
+        ServerCapabilities, ServerInfo,
         messages
     },
     security::{SecurityContext, McpAuth},
@@ -122,8 +121,8 @@ pub trait McpServerState: Send + Sync + Clone + 'static {
     async fn handle_custom_method(
         &self,
         method: &str,
-        params: Option<serde_json::Value>,
-        context: &SecurityContext,
+        _params: Option<serde_json::Value>,
+        _context: &SecurityContext,
     ) -> McpResult<Option<serde_json::Value>> {
         // Default implementation returns method not found
         Err(McpError::ToolNotFound {

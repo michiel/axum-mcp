@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 use crate::{
     error::{McpError, McpResult},
-    protocol::{Tool, ToolContent, ToolsCallResult},
+    protocol::{Tool, ToolsCallResult},
     security::{SecurityContext},
 };
 
@@ -138,7 +138,7 @@ pub trait ToolRegistry: Send + Sync {
     
     /// Get tool categories
     async fn get_categories(&self, context: &SecurityContext) -> McpResult<Vec<String>> {
-        let tools = self.list_tools(context).await?;
+        let _tools = self.list_tools(context).await?;
         let mut categories = std::collections::HashSet::new();
         
         // For the base trait, we can't access the category directly from Tool
