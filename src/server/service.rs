@@ -617,9 +617,10 @@ enum InternalMcpMethod {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use async_trait::async_trait;
     use crate::{
         security::{McpAuth, SecurityContext},
-        server::registry::{InMemoryToolRegistry, McpTool},
+        server::registry::InMemoryToolRegistry,
     };
 
     // Test server state implementation
