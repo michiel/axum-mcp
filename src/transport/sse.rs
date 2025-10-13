@@ -67,13 +67,16 @@ impl SseTransport {
         let parsed_url = url::Url::parse(&url).map_err(|e| McpError::Configuration {
             message: format!("Invalid URL: {}", e),
         })?;
-        
+
         // Only allow HTTP and HTTPS schemes for security
         match parsed_url.scheme() {
-            "http" | "https" => {},
+            "http" | "https" => {}
             scheme => {
                 return Err(McpError::Configuration {
-                    message: format!("Unsupported or unsafe URL scheme: {}. Only http and https are allowed.", scheme),
+                    message: format!(
+                        "Unsupported or unsafe URL scheme: {}. Only http and https are allowed.",
+                        scheme
+                    ),
                 });
             }
         }
@@ -106,7 +109,9 @@ impl SseTransport {
     fn apply_auth(&self, builder: RequestBuilder) -> RequestBuilder {
         match &self.auth {
             Some(SseAuth::Bearer { token }) => builder.bearer_auth(token),
-            Some(SseAuth::Basic { username, password }) => builder.basic_auth(username, Some(password)),
+            Some(SseAuth::Basic { username, password }) => {
+                builder.basic_auth(username, Some(password))
+            }
             Some(SseAuth::ApiKey { header, key }) => builder.header(header, key),
             None => builder,
         }
@@ -141,9 +146,12 @@ impl SseTransport {
             .header("Cache-Control", "no-cache")
             .header("Connection", "keep-alive");
 
-        let response = builder.send().await.map_err(|e| McpError::ConnectionFailed {
-            message: format!("Failed to connect to SSE endpoint: {}", e),
-        })?;
+        let response = builder
+            .send()
+            .await
+            .map_err(|e| McpError::ConnectionFailed {
+                message: format!("Failed to connect to SSE endpoint: {}", e),
+            })?;
 
         if !response.status().is_success() {
             return Err(McpError::ConnectionFailed {
@@ -199,9 +207,12 @@ impl SseTransport {
     /// Send request via HTTP POST
     async fn send_http_request(&self, request: JsonRpcRequest) -> McpResult<()> {
         // Get the session ID
-        let session_id = self.session_id.as_ref().ok_or_else(|| McpError::Transport {
-            message: "No session ID available. Connect first.".to_string(),
-        })?;
+        let session_id = self
+            .session_id
+            .as_ref()
+            .ok_or_else(|| McpError::Transport {
+                message: "No session ID available. Connect first.".to_string(),
+            })?;
 
         // For SSE client, send to the message endpoint
         let message_url = if self.url.ends_with('/') {
@@ -221,7 +232,9 @@ impl SseTransport {
         builder = self.apply_auth(builder);
 
         // Send JSON request
-        builder = builder.header("Content-Type", "application/json").json(&request);
+        builder = builder
+            .header("Content-Type", "application/json")
+            .json(&request);
 
         let response = builder.send().await.map_err(|e| McpError::Network {
             message: format!("Failed to send HTTP request: {}", e),
@@ -250,12 +263,14 @@ impl McpTransport for SseTransport {
         // Update health status
         let mut health = self.health.lock().await;
         health.mark_success(None);
-        health
-            .metadata
-            .insert("url".to_string(), serde_json::Value::String(self.url.clone()));
-        health
-            .metadata
-            .insert("verify_ssl".to_string(), serde_json::Value::Bool(self.verify_ssl));
+        health.metadata.insert(
+            "url".to_string(),
+            serde_json::Value::String(self.url.clone()),
+        );
+        health.metadata.insert(
+            "verify_ssl".to_string(),
+            serde_json::Value::Bool(self.verify_ssl),
+        );
 
         Ok(())
     }
@@ -292,9 +307,12 @@ impl McpTransport for SseTransport {
             });
         }
 
-        let stream = self.event_stream.as_mut().ok_or_else(|| McpError::Transport {
-            message: "Event stream not available".to_string(),
-        })?;
+        let stream = self
+            .event_stream
+            .as_mut()
+            .ok_or_else(|| McpError::Transport {
+                message: "Event stream not available".to_string(),
+            })?;
 
         let start_time = Instant::now();
 
@@ -302,9 +320,10 @@ impl McpTransport for SseTransport {
         match stream.next().await {
             Some(data) => {
                 // Parse JSON response
-                let response: JsonRpcResponse = serde_json::from_str(&data).map_err(|e| McpError::Serialization {
-                    message: format!("Failed to parse SSE response: {}", e),
-                })?;
+                let response: JsonRpcResponse =
+                    serde_json::from_str(&data).map_err(|e| McpError::Serialization {
+                        message: format!("Failed to parse SSE response: {}", e),
+                    })?;
 
                 // Update health
                 let latency = start_time.elapsed();
@@ -409,7 +428,13 @@ mod tests {
         );
         assert!(transport.is_ok());
 
-        let empty_url = SseTransport::new("".to_string(), HashMap::new(), None, Duration::from_secs(30), true);
+        let empty_url = SseTransport::new(
+            "".to_string(),
+            HashMap::new(),
+            None,
+            Duration::from_secs(30),
+            true,
+        );
         assert!(empty_url.is_err());
 
         let invalid_url = SseTransport::new(

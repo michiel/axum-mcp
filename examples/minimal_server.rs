@@ -1,12 +1,12 @@
 //! Minimal MCP server example
 //!
 //! This example demonstrates how to create a basic MCP server with Axum integration.
-//! 
+//!
 //! Run with: cargo run --example minimal_server
 
 use axum_mcp::{
-    prelude::*,
     axum_integration::{mcp_routes_with_wrapper, McpServerWrapper},
+    prelude::*,
     server::{config::McpServerConfig, service::McpServer},
 };
 use std::collections::HashMap;
@@ -82,37 +82,44 @@ impl ToolRegistry for EchoToolRegistry {
 
     async fn get_tool(&self, name: &str, _context: &SecurityContext) -> McpResult<Option<McpTool>> {
         if name == "echo" {
-            Ok(Some(McpTool::new(
-                "echo",
-                "Echo back the input message",
-                json!({
-                    "type": "object",
-                    "properties": {
-                        "message": {"type": "string"}
-                    },
-                    "required": ["message"]
-                }),
-                "utility"
-            ).public())) // Make it publicly accessible
+            Ok(Some(
+                McpTool::new(
+                    "echo",
+                    "Echo back the input message",
+                    json!({
+                        "type": "object",
+                        "properties": {
+                            "message": {"type": "string"}
+                        },
+                        "required": ["message"]
+                    }),
+                    "utility",
+                )
+                .public(),
+            )) // Make it publicly accessible
         } else {
             Ok(None)
         }
     }
 
-    async fn execute_tool(&self, name: &str, context: ToolExecutionContext) -> McpResult<ToolsCallResult> {
+    async fn execute_tool(
+        &self,
+        name: &str,
+        context: ToolExecutionContext,
+    ) -> McpResult<ToolsCallResult> {
         if name == "echo" {
             if let Some(args) = context.arguments {
                 if let Some(message) = args.get("message").and_then(|v| v.as_str()) {
                     return Ok(ToolsCallResult {
                         content: vec![axum_mcp::protocol::ToolContent::Text {
-                            text: format!("Echo: {}", message)
+                            text: format!("Echo: {}", message),
                         }],
                         is_error: false,
                         metadata: std::collections::HashMap::new(),
                     });
                 }
             }
-            
+
             Err(McpError::ToolExecution {
                 tool: name.to_string(),
                 message: "Missing or invalid 'message' parameter".to_string(),
@@ -141,7 +148,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create tools registry
     let mut tools = InMemoryToolRegistry::new();
-    
+
     // Register the echo tool manually
     let echo_tool = McpTool::new(
         "echo",
@@ -153,9 +160,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             },
             "required": ["message"]
         }),
-        "utility"
-    ).public();
-    
+        "utility",
+    )
+    .public();
+
     tools.register_tool(echo_tool);
 
     // Create server state
@@ -166,7 +174,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create MCP server
     let mcp_server = McpServer::new(config, state);
-    
+
     // Wrap the server for Axum integration
     let server_wrapper = McpServerWrapper::new(mcp_server);
 

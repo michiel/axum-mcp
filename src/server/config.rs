@@ -8,37 +8,37 @@ use std::{collections::HashMap, time::Duration};
 pub struct McpServerConfig {
     /// Server name
     pub name: String,
-    
+
     /// Server version
     pub version: String,
-    
+
     /// Host to bind to
     pub host: String,
-    
+
     /// Port to bind to
     pub port: u16,
-    
+
     /// Maximum number of concurrent connections
     pub max_connections: usize,
-    
+
     /// Connection timeout
     pub connection_timeout: Duration,
-    
+
     /// Request timeout
     pub request_timeout: Duration,
-    
+
     /// Whether to enable batch operations
     pub enable_batch: bool,
-    
+
     /// Maximum batch size
     pub max_batch_size: usize,
-    
+
     /// Session configuration
     pub session: SessionConfig,
-    
+
     /// Security configuration
     pub security: SecurityConfig,
-    
+
     /// Additional server metadata
     pub metadata: HashMap<String, serde_json::Value>,
 }
@@ -71,7 +71,7 @@ impl McpServerConfig {
             ..Default::default()
         }
     }
-    
+
     /// Create a new server config with stdio transport
     pub fn stdio() -> Self {
         Self {
@@ -80,21 +80,21 @@ impl McpServerConfig {
             ..Default::default()
         }
     }
-    
+
     /// Enable batch operations with custom settings
     pub fn with_batch(mut self, max_size: usize) -> Self {
         self.enable_batch = true;
         self.max_batch_size = max_size;
         self
     }
-    
+
     /// Set connection limits
     pub fn with_connection_limits(mut self, max_connections: usize, timeout: Duration) -> Self {
         self.max_connections = max_connections;
         self.connection_timeout = timeout;
         self
     }
-    
+
     /// Add custom metadata
     pub fn with_metadata(mut self, key: impl Into<String>, value: serde_json::Value) -> Self {
         self.metadata.insert(key.into(), value);
@@ -107,13 +107,13 @@ impl McpServerConfig {
 pub struct SessionConfig {
     /// Session timeout
     pub timeout: Duration,
-    
+
     /// Maximum events per session
     pub max_events: usize,
-    
+
     /// Cleanup interval
     pub cleanup_interval: Duration,
-    
+
     /// Whether to enable session resumability
     pub enable_resumability: bool,
 }
@@ -134,13 +134,13 @@ impl Default for SessionConfig {
 pub struct SecurityConfig {
     /// Whether to require authentication
     pub require_auth: bool,
-    
+
     /// Rate limiting configuration
     pub rate_limit: RateLimitConfig,
-    
+
     /// CORS configuration
     pub cors: CorsConfig,
-    
+
     /// Whether to enable audit logging
     pub enable_audit: bool,
 }
@@ -161,13 +161,13 @@ impl Default for SecurityConfig {
 pub struct RateLimitConfig {
     /// Whether rate limiting is enabled
     pub enabled: bool,
-    
+
     /// Maximum requests per window
     pub max_requests: u32,
-    
+
     /// Time window for rate limiting
     pub window: Duration,
-    
+
     /// Burst allowance
     pub burst: u32,
 }
@@ -188,16 +188,16 @@ impl Default for RateLimitConfig {
 pub struct CorsConfig {
     /// Whether CORS is enabled
     pub enabled: bool,
-    
+
     /// Allowed origins
     pub allowed_origins: Vec<String>,
-    
+
     /// Allowed methods
     pub allowed_methods: Vec<String>,
-    
+
     /// Allowed headers
     pub allowed_headers: Vec<String>,
-    
+
     /// Whether to allow credentials
     pub allow_credentials: bool,
 }
@@ -241,7 +241,7 @@ mod tests {
             .with_batch(50)
             .with_connection_limits(500, Duration::from_secs(15))
             .with_metadata("custom", serde_json::json!({"key": "value"}));
-        
+
         assert_eq!(config.max_batch_size, 50);
         assert_eq!(config.max_connections, 500);
         assert_eq!(config.connection_timeout, Duration::from_secs(15));

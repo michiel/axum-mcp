@@ -6,15 +6,19 @@
 //! Run with: cargo run --example prompt_registry_example
 
 use axum_mcp::{
-    prelude::*,
     axum_integration::{mcp_routes_with_wrapper, McpServerWrapper},
-    server::{
-        config::McpServerConfig, service::McpServer,
-        prompt::{InMemoryPromptRegistry, PromptParameter, PromptCategory, EmbeddedResource, ResourceAnnotation},
-        resource::{UriSchemeConfig, InMemoryResourceRegistry, Resource, ResourceContent}
-    },
+    prelude::*,
     protocol::ServerInfo,
-    ResourceRegistry, PromptRegistry,
+    server::{
+        config::McpServerConfig,
+        prompt::{
+            EmbeddedResource, InMemoryPromptRegistry, PromptCategory, PromptParameter,
+            ResourceAnnotation,
+        },
+        resource::{InMemoryResourceRegistry, Resource, ResourceContent, UriSchemeConfig},
+        service::McpServer,
+    },
+    PromptRegistry, ResourceRegistry,
 };
 use std::collections::HashMap;
 use tokio::net::TcpListener;
@@ -75,9 +79,9 @@ impl McpServerState for AIWorkflowServerState {
 fn create_ratchet_resources() -> InMemoryResourceRegistry {
     let ratchet_scheme = UriSchemeConfig::new("ratchet", "Ratchet task management")
         .with_types(vec!["task".to_string(), "execution".to_string()]);
-    
+
     let mut registry = InMemoryResourceRegistry::new(ratchet_scheme);
-    
+
     // Add example task definition
     registry.add_resource(Resource {
         uri: "ratchet://tasks/data-processor".to_string(),
@@ -94,7 +98,8 @@ fn create_ratchet_resources() -> InMemoryResourceRegistry {
     "transformations": ["clean_nulls", "normalize_columns", "calculate_stats"]
   },
   "schedule": "0 2 * * *"
-}"#.to_string()
+}"#
+            .to_string(),
         },
         metadata: HashMap::new(),
     });
@@ -198,10 +203,10 @@ Format your response as structured analysis with clear sections."#,
     registry.add_code_analysis_prompt(
         "code_reviewer",
         "Perform comprehensive code review for {{analysis_type}} analysis",
-        "ratchet://code/validator.py"
+        "ratchet://code/validator.py",
     );
 
-    // 3. Data Processing Workflow  
+    // 3. Data Processing Workflow
     registry.add_workflow_prompt(
         "data_processor_designer",
         "Design a data processing pipeline based on requirements",
@@ -253,7 +258,8 @@ Consider scalability, maintainability, and cost optimization."#,
             },
             PromptParameter {
                 name: "volume_estimate".to_string(),
-                description: "Expected data volume (e.g., '1GB/day', '1M records/hour')".to_string(),
+                description: "Expected data volume (e.g., '1GB/day', '1M records/hour')"
+                    .to_string(),
                 required: true,
                 schema: Some(serde_json::json!({"type": "string"})),
                 default: None,
@@ -418,9 +424,7 @@ Follow RESTful principles and modern API design patterns."#,
         id: "data".to_string(),
         name: "Data Engineering".to_string(),
         description: "Prompts for data processing and analysis workflows".to_string(),
-        prompts: vec![
-            "data_processor_designer".to_string(),
-        ],
+        prompts: vec!["data_processor_designer".to_string()],
     });
 
     registry
@@ -453,7 +457,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create tools registry
     let mut tools = InMemoryToolRegistry::new();
-    
+
     // Register a tool that can work with prompts
     let prompt_helper_tool = McpTool::new(
         "list_prompt_categories",
@@ -462,9 +466,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             "type": "object",
             "properties": {}
         }),
-        "utility"
-    ).public();
-    
+        "utility",
+    )
+    .public();
+
     tools.register_tool(prompt_helper_tool);
 
     // Create server state with both registries
@@ -477,7 +482,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create MCP server
     let mcp_server = McpServer::new(config, state);
-    
+
     // Wrap the server for Axum integration
     let server_wrapper = McpServerWrapper::new(mcp_server);
 

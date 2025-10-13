@@ -22,10 +22,7 @@ pub type ServerId = String;
 #[async_trait]
 pub trait TransportConnection: Send + Sync {
     /// Send a notification to the client
-    async fn send_notification(
-        &self,
-        notification: McpNotification,
-    ) -> McpResult<()>;
+    async fn send_notification(&self, notification: McpNotification) -> McpResult<()>;
 
     /// Close the connection
     async fn close(&self) -> McpResult<()>;
@@ -119,8 +116,8 @@ impl Default for ConnectionPoolConfig {
     fn default() -> Self {
         Self {
             max_connections_per_server: 10,
-            max_idle_time: Duration::from_secs(300),        // 5 minutes
-            max_connection_age: Duration::from_secs(3600),  // 1 hour
+            max_idle_time: Duration::from_secs(300), // 5 minutes
+            max_connection_age: Duration::from_secs(3600), // 1 hour
             health_check_interval: Duration::from_secs(60), // 1 minute
             connection_timeout: Duration::from_secs(30),
             min_pool_size: 1,
@@ -259,7 +256,10 @@ impl ConnectionPool {
     }
 
     /// Try to get an existing connection
-    async fn try_get_existing_connection(&self, server_id: &str) -> McpResult<Option<ConnectionWrapper>> {
+    async fn try_get_existing_connection(
+        &self,
+        server_id: &str,
+    ) -> McpResult<Option<ConnectionWrapper>> {
         let mut connections = self.connections.write().await;
         if let Some(server_connections) = connections.get_mut(server_id) {
             // Find a healthy, available connection
@@ -305,7 +305,10 @@ impl ConnectionPool {
         tokio::time::timeout(self.config.connection_timeout, transport.connect())
             .await
             .map_err(|_| McpError::ConnectionTimeout {
-                message: format!("Connection timeout after {:?}", self.config.connection_timeout),
+                message: format!(
+                    "Connection timeout after {:?}",
+                    self.config.connection_timeout
+                ),
             })??;
 
         // Create connection wrapper
@@ -357,7 +360,9 @@ impl ConnectionPool {
             let mut to_remove = Vec::new();
 
             for (index, conn) in server_connections.iter().enumerate() {
-                if conn.is_idle(self.config.max_idle_time) || conn.is_expired(self.config.max_connection_age) {
+                if conn.is_idle(self.config.max_idle_time)
+                    || conn.is_expired(self.config.max_connection_age)
+                {
                     to_remove.push(index);
                 }
             }
@@ -383,7 +388,9 @@ impl ConnectionPool {
             for conn in server_connections.iter() {
                 if !conn.in_use {
                     let health = conn.transport.health().await;
-                    self.health_monitor.update_health(server_id, &conn.id, health).await;
+                    self.health_monitor
+                        .update_health(server_id, &conn.id, health)
+                        .await;
                 }
             }
         }
@@ -431,10 +438,17 @@ impl HealthMonitor {
     }
 
     /// Update health information for a connection
-    pub async fn update_health(&self, server_id: &str, connection_id: &str, transport_health: TransportHealth) {
+    pub async fn update_health(
+        &self,
+        server_id: &str,
+        connection_id: &str,
+        transport_health: TransportHealth,
+    ) {
         let mut health_data = self.health_data.write().await;
 
-        let server_health = health_data.entry(server_id.to_string()).or_insert_with(HashMap::new);
+        let server_health = health_data
+            .entry(server_id.to_string())
+            .or_insert_with(HashMap::new);
 
         server_health.insert(
             connection_id.to_string(),
@@ -485,7 +499,10 @@ mod tests {
             cwd: None,
         };
 
-        assert!(pool.add_server("test-server".to_string(), server_config).await.is_ok());
+        assert!(pool
+            .add_server("test-server".to_string(), server_config)
+            .await
+            .is_ok());
 
         // Remove the server
         assert!(pool.remove_server("test-server").await.is_ok());
@@ -505,7 +522,8 @@ mod tests {
     fn test_connection_wrapper() {
         use crate::transport::stdio::StdioTransport;
 
-        let transport = StdioTransport::new("echo".to_string(), vec![], HashMap::new(), None).unwrap();
+        let transport =
+            StdioTransport::new("echo".to_string(), vec![], HashMap::new(), None).unwrap();
 
         let mut conn = ConnectionWrapper::new("test-server".to_string(), Box::new(transport));
 

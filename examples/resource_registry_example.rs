@@ -8,13 +8,16 @@
 //! Run with: cargo run --example resource_registry_example
 
 use axum_mcp::{
-    prelude::*,
     axum_integration::{mcp_routes_with_wrapper, McpServerWrapper},
-    server::{
-        config::McpServerConfig, service::McpServer,
-        resource::{UriSchemeConfig, InMemoryResourceRegistry, Resource, ResourceContent, ResourceTemplate}
-    },
+    prelude::*,
     protocol::ServerInfo,
+    server::{
+        config::McpServerConfig,
+        resource::{
+            InMemoryResourceRegistry, Resource, ResourceContent, ResourceTemplate, UriSchemeConfig,
+        },
+        service::McpServer,
+    },
     ResourceRegistry,
 };
 use std::collections::HashMap;
@@ -75,13 +78,13 @@ fn create_ratchet_resources() -> InMemoryResourceRegistry {
     let ratchet_scheme = UriSchemeConfig::new("ratchet", "Ratchet task management resources")
         .with_types(vec![
             "task".to_string(),
-            "execution".to_string(), 
+            "execution".to_string(),
             "schedule".to_string(),
-            "log".to_string()
+            "log".to_string(),
         ]);
-    
+
     let mut registry = InMemoryResourceRegistry::new(ratchet_scheme);
-    
+
     // Add some example Ratchet resources
     registry.add_resource(Resource {
         uri: "ratchet://tasks/web-scraper".to_string(),
@@ -100,12 +103,19 @@ fn create_ratchet_resources() -> InMemoryResourceRegistry {
       "price": ".price"
     }
   }
-}"#.to_string()
+}"#
+            .to_string(),
         },
         metadata: {
             let mut meta = HashMap::new();
-            meta.insert("category".to_string(), serde_json::Value::String("automation".to_string()));
-            meta.insert("priority".to_string(), serde_json::Value::String("high".to_string()));
+            meta.insert(
+                "category".to_string(),
+                serde_json::Value::String("automation".to_string()),
+            );
+            meta.insert(
+                "priority".to_string(),
+                serde_json::Value::String("high".to_string()),
+            );
             meta
         },
     });
@@ -121,13 +131,23 @@ fn create_ratchet_resources() -> InMemoryResourceRegistry {
 2025-01-03 14:00:02 [INFO] Found 25 products
 2025-01-03 14:00:03 [INFO] Processing product data
 2025-01-03 14:00:05 [INFO] Task completed successfully
-2025-01-03 14:00:05 [INFO] Results stored in database"#.to_string()
+2025-01-03 14:00:05 [INFO] Results stored in database"#
+                .to_string(),
         },
         metadata: {
             let mut meta = HashMap::new();
-            meta.insert("execution_id".to_string(), serde_json::Value::String("web-scraper-20250103-140000".to_string()));
-            meta.insert("status".to_string(), serde_json::Value::String("success".to_string()));
-            meta.insert("duration_ms".to_string(), serde_json::Value::Number(serde_json::Number::from(5000)));
+            meta.insert(
+                "execution_id".to_string(),
+                serde_json::Value::String("web-scraper-20250103-140000".to_string()),
+            );
+            meta.insert(
+                "status".to_string(),
+                serde_json::Value::String("success".to_string()),
+            );
+            meta.insert(
+                "duration_ms".to_string(),
+                serde_json::Value::Number(serde_json::Number::from(5000)),
+            );
             meta
         },
     });
@@ -140,9 +160,12 @@ fn create_ratchet_resources() -> InMemoryResourceRegistry {
         mime_type: Some("application/json".to_string()),
         metadata: {
             let mut meta = HashMap::new();
-            meta.insert("parameters".to_string(), serde_json::json!({
-                "task_id": "The unique identifier for the task"
-            }));
+            meta.insert(
+                "parameters".to_string(),
+                serde_json::json!({
+                    "task_id": "The unique identifier for the task"
+                }),
+            );
             meta
         },
     });
@@ -171,11 +194,11 @@ fn create_layercake_resources() -> InMemoryResourceRegistry {
             "model".to_string(),
             "dataset".to_string(),
             "experiment".to_string(),
-            "artifact".to_string()
+            "artifact".to_string(),
         ]);
-    
+
     let mut registry = InMemoryResourceRegistry::new(layercake_scheme);
-    
+
     // Add example Layercake resources
     registry.add_resource(Resource {
         uri: "layercake://models/sentiment-classifier-v2".to_string(),
@@ -195,13 +218,23 @@ fn create_layercake_resources() -> InMemoryResourceRegistry {
     "endpoint": "https://api.layercake.ai/models/sentiment-classifier-v2",
     "scaling": "auto"
   }
-}"#.to_string()
+}"#
+            .to_string(),
         },
         metadata: {
             let mut meta = HashMap::new();
-            meta.insert("model_type".to_string(), serde_json::Value::String("classification".to_string()));
-            meta.insert("framework".to_string(), serde_json::Value::String("pytorch".to_string()));
-            meta.insert("size_mb".to_string(), serde_json::Value::Number(serde_json::Number::from(428)));
+            meta.insert(
+                "model_type".to_string(),
+                serde_json::Value::String("classification".to_string()),
+            );
+            meta.insert(
+                "framework".to_string(),
+                serde_json::Value::String("pytorch".to_string()),
+            );
+            meta.insert(
+                "size_mb".to_string(),
+                serde_json::Value::Number(serde_json::Number::from(428)),
+            );
             meta
         },
     });
@@ -224,13 +257,23 @@ fn create_layercake_resources() -> InMemoryResourceRegistry {
   "labels": ["positive", "negative", "neutral"],
   "source": "multi-domain social media and reviews",
   "quality_score": 0.96
-}"#.to_string()
+}"#
+            .to_string(),
         },
         metadata: {
             let mut meta = HashMap::new();
-            meta.insert("dataset_type".to_string(), serde_json::Value::String("text_classification".to_string()));
-            meta.insert("language".to_string(), serde_json::Value::String("en".to_string()));
-            meta.insert("created_date".to_string(), serde_json::Value::String("2024-12-15".to_string()));
+            meta.insert(
+                "dataset_type".to_string(),
+                serde_json::Value::String("text_classification".to_string()),
+            );
+            meta.insert(
+                "language".to_string(),
+                serde_json::Value::String("en".to_string()),
+            );
+            meta.insert(
+                "created_date".to_string(),
+                serde_json::Value::String("2024-12-15".to_string()),
+            );
             meta
         },
     });
@@ -243,9 +286,12 @@ fn create_layercake_resources() -> InMemoryResourceRegistry {
         mime_type: Some("application/json".to_string()),
         metadata: {
             let mut meta = HashMap::new();
-            meta.insert("parameters".to_string(), serde_json::json!({
-                "model_id": "The unique identifier for the model"
-            }));
+            meta.insert(
+                "parameters".to_string(),
+                serde_json::json!({
+                    "model_id": "The unique identifier for the model"
+                }),
+            );
             meta
         },
     });
@@ -257,9 +303,12 @@ fn create_layercake_resources() -> InMemoryResourceRegistry {
         mime_type: Some("application/json".to_string()),
         metadata: {
             let mut meta = HashMap::new();
-            meta.insert("parameters".to_string(), serde_json::json!({
-                "dataset_id": "The unique identifier for the dataset"
-            }));
+            meta.insert(
+                "parameters".to_string(),
+                serde_json::json!({
+                    "dataset_id": "The unique identifier for the dataset"
+                }),
+            );
             meta
         },
     });
@@ -274,24 +323,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("🚀 Starting Resource Registry Example Server");
     println!();
-    
+
     // Demonstrate different URI schemes
     println!("📋 Supported URI Schemes:");
-    
+
     // Create registries for different projects
     let ratchet_resources = create_ratchet_resources();
     let layercake_resources = create_layercake_resources();
-    
-    println!("  • ratchet://    - Ratchet task management ({})", 
-        ratchet_resources.uri_scheme().description);
-    println!("  • layercake://  - Layercake ML platform ({})", 
-        layercake_resources.uri_scheme().description);
+
+    println!(
+        "  • ratchet://    - Ratchet task management ({})",
+        ratchet_resources.uri_scheme().description
+    );
+    println!(
+        "  • layercake://  - Layercake ML platform ({})",
+        layercake_resources.uri_scheme().description
+    );
     println!();
 
     // For this example, we'll demonstrate with the Ratchet scheme
     // In a real implementation, you might use MultiSchemeResourceRegistry
     // to support multiple schemes simultaneously
-    
+
     // Create server configuration
     let config = McpServerConfig::sse_with_host(3000, "0.0.0.0")
         .with_batch(50)
@@ -299,7 +352,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create tools registry with an example tool
     let mut tools = InMemoryToolRegistry::new();
-    
+
     // Register a tool that can work with resources
     let resource_info_tool = McpTool::new(
         "get_resource_info",
@@ -314,9 +367,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             },
             "required": ["uri"]
         }),
-        "utility"
-    ).public();
-    
+        "utility",
+    )
+    .public();
+
     tools.register_tool(resource_info_tool);
 
     // Create server state with resource registry
@@ -328,7 +382,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create MCP server
     let mcp_server = McpServer::new(config, state);
-    
+
     // Wrap the server for Axum integration
     let server_wrapper = McpServerWrapper::new(mcp_server);
 
@@ -371,7 +425,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("     -d '{{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"params\":{{\"name\":\"get_resource_info\",\"arguments\":{{\"uri\":\"ratchet://tasks/web-scraper\"}}}},\"id\":4}}'");
     println!();
     println!("💡 Note: This example demonstrates the 'ratchet://' URI scheme.");
-    println!("   In a real deployment, you would configure the appropriate scheme for your project.");
+    println!(
+        "   In a real deployment, you would configure the appropriate scheme for your project."
+    );
     println!("   Layercake would use 'layercake://' URIs, custom projects would define their own schemes.");
     println!();
 

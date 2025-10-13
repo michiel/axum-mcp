@@ -98,13 +98,13 @@ pub struct ApiKeyInfo {
 pub struct ClientContext {
     /// User agent string
     pub user_agent: String,
-    
+
     /// Unique client identifier
     pub client_id: Option<String>,
 
     /// Session identifier
     pub session_id: Option<String>,
-    
+
     /// Additional client metadata
     pub metadata: HashMap<String, String>,
 }
@@ -125,16 +125,16 @@ impl Default for ClientContext {
 pub struct SecurityContext {
     /// Client information
     pub client: ClientContext,
-    
+
     /// Client permissions
     pub permissions: ClientPermissions,
-    
+
     /// Authentication status
     pub authenticated: bool,
-    
+
     /// When the client was authenticated
     pub authenticated_at: Option<DateTime<Utc>>,
-    
+
     /// Additional capabilities
     pub capabilities: Vec<String>,
 }
@@ -150,7 +150,7 @@ impl SecurityContext {
             capabilities: vec!["system".to_string(), "initialized".to_string()],
         }
     }
-    
+
     /// Create an anonymous security context (limited permissions)
     pub fn anonymous() -> Self {
         Self {
@@ -161,7 +161,7 @@ impl SecurityContext {
             capabilities: Vec::new(),
         }
     }
-    
+
     /// Create an authenticated security context
     pub fn authenticated(client: ClientContext, capabilities: Vec<String>) -> Self {
         Self {
@@ -172,27 +172,27 @@ impl SecurityContext {
             capabilities,
         }
     }
-    
+
     /// Check if the context is anonymous
     pub fn is_anonymous(&self) -> bool {
         !self.authenticated
     }
-    
+
     /// Check if the context is authenticated
     pub fn is_authenticated(&self) -> bool {
         self.authenticated
     }
-    
+
     /// Check if the context is a system context
     pub fn is_system(&self) -> bool {
         self.capabilities.contains(&"system".to_string())
     }
-    
+
     /// Check if the context has a specific capability
     pub fn has_capability(&self, capability: &str) -> bool {
         self.capabilities.contains(&capability.to_string())
     }
-    
+
     /// Add a capability
     pub fn add_capability(&mut self, capability: impl Into<String>) {
         let cap = capability.into();
@@ -207,7 +207,7 @@ impl SecurityContext {
 pub trait McpAuth: Send + Sync {
     /// Authenticate a client and return security context
     async fn authenticate(&self, client_info: &ClientContext) -> McpResult<SecurityContext>;
-    
+
     /// Authorize an action for a security context
     async fn authorize(&self, context: &SecurityContext, resource: &str, action: &str) -> bool;
 }
@@ -338,7 +338,9 @@ impl McpAuthManager {
         let cutoff = Utc::now() - max_age;
 
         sessions.retain(|_, context| {
-            context.authenticated_at.map_or(false, |auth_time| auth_time > cutoff)
+            context
+                .authenticated_at
+                .map_or(false, |auth_time| auth_time > cutoff)
         });
     }
 }
@@ -399,13 +401,19 @@ mod tests {
         let auth_manager = McpAuthManager::new(config);
 
         // Authenticate and create session
-        let context = auth_manager.authenticate(Some("Bearer test-key-123")).await.unwrap();
+        let context = auth_manager
+            .authenticate(Some("Bearer test-key-123"))
+            .await
+            .unwrap();
         let session_id = context.client.session_id.as_ref().unwrap();
 
         // Get session
         let session = auth_manager.get_session(session_id).await;
         assert!(session.is_some());
-        assert_eq!(session.unwrap().client.session_id.as_ref().unwrap(), session_id);
+        assert_eq!(
+            session.unwrap().client.session_id.as_ref().unwrap(),
+            session_id
+        );
 
         // Remove session
         auth_manager.remove_session(session_id).await;

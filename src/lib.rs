@@ -198,62 +198,52 @@ pub use error::{McpError, McpResult};
 
 // Re-export protocol types
 pub use protocol::{
-    JsonRpcRequest, JsonRpcResponse, JsonRpcError,
-    McpMessage, McpMethod, Tool, ToolsCallResult, ToolContent,
-    InitializeParams, InitializeResult, BatchRequest, BatchResult,
+    BatchRequest, BatchResult, InitializeParams, InitializeResult, JsonRpcError, JsonRpcRequest,
+    JsonRpcResponse, McpMessage, McpMethod, Tool, ToolContent, ToolsCallResult,
     MCP_PROTOCOL_VERSION, SUPPORTED_PROTOCOL_VERSIONS,
 };
 
 // Re-export server framework
 pub use server::{
-    McpServerConfig, McpServerState,
-    ToolRegistry, ToolExecutionContext, McpTool,
-    ProgressReporter, ProgressUpdate, ProgressLevel,
-    InMemoryToolRegistry,
-    ResourceRegistry, Resource, ResourceTemplate, ResourceContent,
-    ResourceSubscription, ResourceChanged, ResourceChangeType,
-    UriSchemeConfig, ParsedUri, MultiSchemeResourceRegistry, InMemoryResourceRegistry,
-    PromptRegistry, Prompt, PromptMessage, PromptContent, PromptParameter,
-    GetPromptRequest, GetPromptResult, PromptCategory, MessageRole,
-    EmbeddedResource, ResourceAnnotation, TemplateEngine, SimpleTemplateEngine,
-    InMemoryPromptRegistry,
+    EmbeddedResource, GetPromptRequest, GetPromptResult, InMemoryPromptRegistry,
+    InMemoryResourceRegistry, InMemoryToolRegistry, McpServerConfig, McpServerState, McpTool,
+    MessageRole, MultiSchemeResourceRegistry, ParsedUri, ProgressLevel, ProgressReporter,
+    ProgressUpdate, Prompt, PromptCategory, PromptContent, PromptMessage, PromptParameter,
+    PromptRegistry, Resource, ResourceAnnotation, ResourceChangeType, ResourceChanged,
+    ResourceContent, ResourceRegistry, ResourceSubscription, ResourceTemplate,
+    SimpleTemplateEngine, TemplateEngine, ToolExecutionContext, ToolRegistry, UriSchemeConfig,
 };
 
 // Re-export transport types
 pub use transport::{
-    McpTransport, TransportType, TransportFactory,
-    StreamableHttpTransport, SseTransport, StdioTransport,
-    SessionManager, EventStore, InMemoryEventStore, McpEvent,
-    TransportHealth,
+    EventStore, InMemoryEventStore, McpEvent, McpTransport, SessionManager, SseTransport,
+    StdioTransport, StreamableHttpTransport, TransportFactory, TransportHealth, TransportType,
 };
 
 // Re-export security framework
-pub use security::{
-    McpAuth, SecurityContext, ClientContext, ClientPermissions,
-};
+pub use security::{ClientContext, ClientPermissions, McpAuth, SecurityContext};
 
 /// Axum integration module
 #[cfg(feature = "handlers")]
 pub mod axum_integration {
     //! Axum-specific HTTP handlers and utilities
-    
-    use crate::server::{service::McpServer, handler::McpHandlerState, McpServerState};
+
+    use crate::server::{handler::McpHandlerState, service::McpServer, McpServerState};
     use crate::transport::streamable_http::SessionManager;
     use crate::transport::TransportHealth;
-    
+
     pub use crate::server::handler::{
-        mcp_get_handler, mcp_post_handler, 
-        mcp_sse_handler, mcp_delete_handler, mcp_routes,
-        McpQueryParams, McpEndpointInfo,
+        mcp_delete_handler, mcp_get_handler, mcp_post_handler, mcp_routes, mcp_sse_handler,
+        McpEndpointInfo, McpQueryParams,
     };
-    
+
     /// Wrapper for McpServer that implements McpHandlerState
     #[derive(Clone)]
     pub struct McpServerWrapper<S: McpServerState> {
         server: McpServer<S>,
         session_manager: Option<SessionManager>,
     }
-    
+
     impl<S: McpServerState> McpServerWrapper<S> {
         /// Create a new wrapper for the MCP server
         pub fn new(server: McpServer<S>) -> Self {
@@ -262,7 +252,7 @@ pub mod axum_integration {
                 session_manager: None,
             }
         }
-        
+
         /// Create a new wrapper with session management for StreamableHTTP
         pub fn with_session_manager(server: McpServer<S>, session_manager: SessionManager) -> Self {
             Self {
@@ -270,24 +260,24 @@ pub mod axum_integration {
                 session_manager: Some(session_manager),
             }
         }
-        
+
         /// Get the underlying MCP server
         pub fn server(&self) -> &McpServer<S> {
             &self.server
         }
     }
-    
+
     impl<S: McpServerState> McpHandlerState for McpServerWrapper<S> {
         type ServerState = S;
-        
+
         fn mcp_server(&self) -> &McpServer<Self::ServerState> {
             &self.server
         }
-        
+
         fn session_manager(&self) -> Option<&SessionManager> {
             self.session_manager.as_ref()
         }
-        
+
         fn transport_health(&self) -> impl std::future::Future<Output = TransportHealth> + Send {
             async {
                 // TODO: Implement actual health check based on server state
@@ -295,7 +285,7 @@ pub mod axum_integration {
             }
         }
     }
-    
+
     /// Convenience function to create MCP routes with wrapper
     pub fn mcp_routes_with_wrapper<S>() -> axum::Router<McpServerWrapper<S>>
     where
@@ -308,19 +298,18 @@ pub mod axum_integration {
 // Convenience re-exports for common use cases
 pub mod prelude {
     //! Commonly used types and traits
-    
+
     pub use crate::{
         error::{McpError, McpResult},
-        protocol::{JsonRpcRequest, JsonRpcResponse, Tool, ToolsCallResult, ToolContent},
-        security::{McpAuth, SecurityContext, ClientContext},
+        protocol::{JsonRpcRequest, JsonRpcResponse, Tool, ToolContent, ToolsCallResult},
+        security::{ClientContext, McpAuth, SecurityContext},
         server::{
-            McpServerConfig, McpServerState,
-            ToolRegistry, ToolExecutionContext, McpTool,
-            InMemoryToolRegistry,
+            InMemoryToolRegistry, McpServerConfig, McpServerState, McpTool, ToolExecutionContext,
+            ToolRegistry,
         },
-        transport::{McpTransport, TransportType, SessionManager},
+        transport::{McpTransport, SessionManager, TransportType},
     };
-    
+
     pub use async_trait::async_trait;
     pub use serde_json::{json, Value};
 }
@@ -333,7 +322,9 @@ mod tests {
     #[test]
     fn test_crate_exports() {
         // Test that all major types are accessible
-        let _error: McpError = McpError::Internal { message: "test".to_string() };
+        let _error: McpError = McpError::Internal {
+            message: "test".to_string(),
+        };
         let _protocol_version = MCP_PROTOCOL_VERSION;
         let _supported_versions = SUPPORTED_PROTOCOL_VERSIONS;
     }
@@ -355,7 +346,12 @@ mod tests {
                 Ok(SecurityContext::system())
             }
 
-            async fn authorize(&self, _context: &SecurityContext, _resource: &str, _action: &str) -> bool {
+            async fn authorize(
+                &self,
+                _context: &SecurityContext,
+                _resource: &str,
+                _action: &str,
+            ) -> bool {
                 true
             }
         }

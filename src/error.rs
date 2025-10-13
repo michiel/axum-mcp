@@ -69,7 +69,7 @@ pub enum McpError {
 
     /// Rate limit exceeded with details
     #[error("Rate limit exceeded: {message}")]
-    RateLimitExceeded { 
+    RateLimitExceeded {
         message: String,
         retry_after: Option<u64>,
     },
@@ -139,17 +139,17 @@ impl McpError {
     /// Get the error code for JSON-RPC responses
     pub fn error_code(&self) -> i32 {
         match self {
-            McpError::Protocol { .. } => -32600, // Invalid Request
-            McpError::ToolNotFound { .. } => -32601, // Method not found
-            McpError::ResourceNotFound { .. } => -32601, // Method not found (resource not found)
-            McpError::InvalidResource { .. } => -32602, // Invalid params
-            McpError::Validation { .. } => -32602, // Invalid params
-            McpError::Authentication { .. } => -32000, // Server error (auth)
-            McpError::Authorization { .. } => -32000, // Server error (authz)
-            McpError::RateLimit { .. } => -32000, // Server error (rate limit)
+            McpError::Protocol { .. } => -32600,          // Invalid Request
+            McpError::ToolNotFound { .. } => -32601,      // Method not found
+            McpError::ResourceNotFound { .. } => -32601,  // Method not found (resource not found)
+            McpError::InvalidResource { .. } => -32602,   // Invalid params
+            McpError::Validation { .. } => -32602,        // Invalid params
+            McpError::Authentication { .. } => -32000,    // Server error (auth)
+            McpError::Authorization { .. } => -32000,     // Server error (authz)
+            McpError::RateLimit { .. } => -32000,         // Server error (rate limit)
             McpError::RateLimitExceeded { .. } => -32000, // Server error (rate limit)
-            McpError::ToolExecution { .. } => -32000, // Server error (execution)
-            _ => -32603, // Internal error
+            McpError::ToolExecution { .. } => -32000,     // Server error (execution)
+            _ => -32603,                                  // Internal error
         }
     }
 
@@ -160,7 +160,9 @@ impl McpError {
             McpError::Authorization { .. } => "Access denied".to_string(),
             McpError::ToolNotFound { name } => format!("Tool '{}' not found", name),
             McpError::ResourceNotFound { uri } => format!("Resource '{}' not found", uri),
-            McpError::InvalidResource { uri, message } => format!("Invalid resource '{}': {}", uri, message),
+            McpError::InvalidResource { uri, message } => {
+                format!("Invalid resource '{}': {}", uri, message)
+            }
             McpError::Validation { message } => message.clone(),
             McpError::Protocol { message } => message.clone(),
             McpError::RateLimit { .. } => "Rate limit exceeded".to_string(),

@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use crate::{
     error::{McpError, McpResult},
     protocol::{Tool, ToolsCallResult},
-    security::{SecurityContext},
+    security::SecurityContext,
 };
 
 /// MCP tool definition with execution capability
@@ -67,7 +67,7 @@ impl McpTool {
         self.tool.metadata.insert(key.into(), value);
         self
     }
-    
+
     /// Set the tool category
     pub fn with_category(mut self, category: impl Into<String>) -> Self {
         self.category = category.into();
@@ -86,7 +86,7 @@ pub struct ToolExecutionContext {
 
     /// Request correlation ID
     pub request_id: Option<String>,
-    
+
     /// Additional execution metadata
     pub metadata: HashMap<String, Value>,
 }
@@ -101,19 +101,19 @@ impl ToolExecutionContext {
             metadata: HashMap::new(),
         }
     }
-    
+
     /// Set the tool arguments
     pub fn with_arguments(mut self, arguments: Value) -> Self {
         self.arguments = Some(arguments);
         self
     }
-    
+
     /// Set the request ID
     pub fn with_request_id(mut self, request_id: impl Into<String>) -> Self {
         self.request_id = Some(request_id.into());
         self
     }
-    
+
     /// Add metadata
     pub fn with_metadata(mut self, key: impl Into<String>, value: Value) -> Self {
         self.metadata.insert(key.into(), value);
@@ -131,28 +131,32 @@ pub trait ToolRegistry: Send + Sync {
     async fn get_tool(&self, name: &str, context: &SecurityContext) -> McpResult<Option<McpTool>>;
 
     /// Execute a tool
-    async fn execute_tool(&self, name: &str, execution_context: ToolExecutionContext) -> McpResult<ToolsCallResult>;
+    async fn execute_tool(
+        &self,
+        name: &str,
+        execution_context: ToolExecutionContext,
+    ) -> McpResult<ToolsCallResult>;
 
     /// Check if a tool exists and is accessible
     async fn can_access_tool(&self, name: &str, context: &SecurityContext) -> bool;
-    
+
     /// Get tool categories
     async fn get_categories(&self, context: &SecurityContext) -> McpResult<Vec<String>> {
         let _tools = self.list_tools(context).await?;
         let mut categories = std::collections::HashSet::new();
-        
+
         // For the base trait, we can't access the category directly from Tool
         // so we'll return a default implementation
         categories.insert("general".to_string());
-        
+
         Ok(categories.into_iter().collect())
     }
-    
+
     /// Search tools by name or description
     async fn search_tools(&self, query: &str, context: &SecurityContext) -> McpResult<Vec<Tool>> {
         let tools = self.list_tools(context).await?;
         let query_lower = query.to_lowercase();
-        
+
         Ok(tools
             .into_iter()
             .filter(|tool| {
@@ -176,17 +180,17 @@ impl InMemoryToolRegistry {
             tools: HashMap::new(),
         }
     }
-    
+
     /// Add a tool to the registry
     pub fn register_tool(&mut self, tool: McpTool) {
         self.tools.insert(tool.tool.name.clone(), tool);
     }
-    
+
     /// Remove a tool from the registry
     pub fn unregister_tool(&mut self, name: &str) -> Option<McpTool> {
         self.tools.remove(name)
     }
-    
+
     /// Get all registered tools
     pub fn get_all_tools(&self) -> Vec<&McpTool> {
         self.tools.values().collect()
@@ -202,7 +206,8 @@ impl Default for InMemoryToolRegistry {
 #[async_trait]
 impl ToolRegistry for InMemoryToolRegistry {
     async fn list_tools(&self, context: &SecurityContext) -> McpResult<Vec<Tool>> {
-        let tools = self.tools
+        let tools = self
+            .tools
             .values()
             .filter(|tool| {
                 // Filter tools based on authentication requirements
@@ -214,7 +219,7 @@ impl ToolRegistry for InMemoryToolRegistry {
             })
             .map(|mcp_tool| mcp_tool.tool.clone())
             .collect();
-        
+
         Ok(tools)
     }
 
@@ -232,7 +237,11 @@ impl ToolRegistry for InMemoryToolRegistry {
         }
     }
 
-    async fn execute_tool(&self, name: &str, _execution_context: ToolExecutionContext) -> McpResult<ToolsCallResult> {
+    async fn execute_tool(
+        &self,
+        name: &str,
+        _execution_context: ToolExecutionContext,
+    ) -> McpResult<ToolsCallResult> {
         // Default implementation returns an error - users should override this
         Err(McpError::ToolExecution {
             tool: name.to_string(),
@@ -251,16 +260,16 @@ impl ToolRegistry for InMemoryToolRegistry {
             false
         }
     }
-    
+
     async fn get_categories(&self, context: &SecurityContext) -> McpResult<Vec<String>> {
         let mut categories = std::collections::HashSet::new();
-        
+
         for tool in self.tools.values() {
             if !tool.requires_auth || !context.is_anonymous() {
                 categories.insert(tool.category.clone());
             }
         }
-        
+
         Ok(categories.into_iter().collect())
     }
 }
@@ -315,14 +324,16 @@ mod tests {
             "Requires auth",
             serde_json::json!({"type": "object"}),
             "secure",
-        ).require_auth();
-        
+        )
+        .require_auth();
+
         let public_tool = McpTool::new(
             "public_tool",
             "Public access",
             serde_json::json!({"type": "object"}),
             "public",
-        ).public();
+        )
+        .public();
 
         registry.register_tool(auth_tool);
         registry.register_tool(public_tool);

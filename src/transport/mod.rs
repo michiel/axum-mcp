@@ -8,7 +8,9 @@ pub mod streamable_http;
 pub use connection::{ConnectionHealth, ConnectionPool, HealthMonitor};
 pub use sse::SseTransport;
 pub use stdio::StdioTransport;
-pub use streamable_http::{StreamableHttpTransport, SessionManager, EventStore, InMemoryEventStore, McpEvent};
+pub use streamable_http::{
+    EventStore, InMemoryEventStore, McpEvent, SessionManager, StreamableHttpTransport,
+};
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -237,7 +239,9 @@ impl TransportFactory {
                 auth,
                 timeout,
                 verify_ssl,
-            } => Ok(Box::new(SseTransport::new(url, headers, auth, timeout, verify_ssl)?)),
+            } => Ok(Box::new(SseTransport::new(
+                url, headers, auth, timeout, verify_ssl,
+            )?)),
             TransportType::StreamableHttp {
                 max_events_per_session,
                 session_timeout,

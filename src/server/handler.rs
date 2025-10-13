@@ -3,7 +3,10 @@
 use axum::{
     extract::{Query, State},
     http::{HeaderMap, StatusCode},
-    response::{IntoResponse, Response, sse::{Event, Sse}},
+    response::{
+        sse::{Event, Sse},
+        IntoResponse, Response,
+    },
     Json,
 };
 use futures_util::stream::{self, StreamExt};
@@ -15,10 +18,10 @@ use uuid::Uuid;
 
 use crate::{
     protocol::JsonRpcRequest,
-    security::{SecurityContext, ClientContext},
+    security::{ClientContext, SecurityContext},
     server::{service::McpServer, McpServerState},
     transport::{
-        streamable_http::{SessionManager, McpEvent},
+        streamable_http::{McpEvent, SessionManager},
         TransportHealth,
     },
 };
@@ -27,20 +30,18 @@ use crate::{
 pub trait McpHandlerState: Send + Sync + Clone + 'static {
     /// Server state implementation
     type ServerState: McpServerState;
-    
+
     /// Get the MCP server instance
     fn mcp_server(&self) -> &McpServer<Self::ServerState>;
-    
+
     /// Get the session manager (if using StreamableHTTP)
     fn session_manager(&self) -> Option<&SessionManager>;
-    
+
     /// Get transport health information
     fn transport_health(&self) -> impl std::future::Future<Output = TransportHealth> + Send {
-        async {
-            TransportHealth::healthy()
-        }
+        async { TransportHealth::healthy() }
     }
-    
+
     /// Create security context from request headers
     fn create_security_context(&self, headers: &HeaderMap) -> SecurityContext {
         // Extract client information from headers
@@ -48,14 +49,14 @@ pub trait McpHandlerState: Send + Sync + Clone + 'static {
             .get("user-agent")
             .and_then(|v| v.to_str().ok())
             .unwrap_or("unknown");
-            
+
         let client_context = ClientContext {
             user_agent: user_agent.to_string(),
             client_id: None,
             session_id: None,
             metadata: HashMap::new(),
         };
-        
+
         // For now, create a basic authenticated context
         // Real implementations would validate JWT tokens, API keys, etc.
         SecurityContext::authenticated(client_context, Vec::new())
@@ -98,10 +99,10 @@ where
     S: McpHandlerState,
 {
     debug!("MCP GET request with params: {:?}", params);
-    
+
     let server_config = state.mcp_server().config();
     let transport_health = state.transport_health().await;
-    
+
     // If this is a health check request
     if params.transport.as_deref() == Some("health") {
         let health = state.mcp_server().get_health().await;
@@ -111,9 +112,10 @@ where
             "uptime_seconds": health.uptime_seconds,
             "active_connections": health.active_connections,
             "transport_health": transport_health
-        })).into_response();
+        }))
+        .into_response();
     }
-    
+
     // Return endpoint information
     let info = McpEndpointInfo {
         name: server_config.name.clone(),
@@ -125,7 +127,7 @@ where
         capabilities: vec!["tools".to_string(), "batch".to_string()],
         session_support: state.session_manager().is_some(),
     };
-    
+
     Json(info).into_response()
 }
 
@@ -139,14 +141,20 @@ pub async fn mcp_post_handler<S>(
 where
     S: McpHandlerState,
 {
-    debug!("MCP POST request: {} (id: {:?})", request.method, request.id);
-    
+    debug!(
+        "MCP POST request: {} (id: {:?})",
+        request.method, request.id
+    );
+
     // Create security context from headers
     let security_context = state.create_security_context(&headers);
-    
+
     // Handle the request
-    let response: crate::protocol::JsonRpcResponse = state.mcp_server().handle_request(request, security_context).await;
-    
+    let response: crate::protocol::JsonRpcResponse = state
+        .mcp_server()
+        .handle_request(request, security_context)
+        .await;
+
     // For StreamableHTTP transport, store the response as an event
     if let Some(session_manager) = state.session_manager() {
         if let Some(session_id) = &params.session_id {
@@ -155,13 +163,13 @@ where
                 "response".to_string(),
                 serde_json::to_value(&response).unwrap_or_default(),
             );
-            
+
             if let Err(e) = session_manager.store_event(&event).await {
                 warn!("Failed to store response event: {}", e);
             }
         }
     }
-    
+
     Json(response).into_response()
 }
 
@@ -175,15 +183,15 @@ where
     S: McpHandlerState,
 {
     debug!("MCP SSE request with params: {:?}", params);
-    
+
     // Detect if this is Claude Desktop by checking user-agent
     let user_agent = headers
         .get("user-agent")
         .and_then(|v| v.to_str().ok())
         .unwrap_or("");
-    
+
     let is_claude_desktop = user_agent.contains("Claude");
-    
+
     if is_claude_desktop {
         info!("Claude Desktop client detected, using StreamableHTTP transport");
         return handle_streamable_http_sse(state, params, headers).await;
@@ -194,41 +202,39 @@ where
 }
 
 /// Handle standard SSE streaming
-async fn handle_standard_sse<S>(
-    state: S,
-    _params: McpQueryParams,
-    _headers: HeaderMap,
-) -> Response
+async fn handle_standard_sse<S>(state: S, _params: McpQueryParams, _headers: HeaderMap) -> Response
 where
     S: McpHandlerState,
 {
     // Create a stream of server events
     let progress_receiver = state.mcp_server().progress_reporter().subscribe();
     let progress_stream = BroadcastStream::new(progress_receiver);
-    
-    let event_stream = progress_stream.map(|result| {
-        match result {
-            Ok(progress) => {
-                let data = serde_json::to_string(&progress).unwrap_or_default();
-                Ok::<Event, std::convert::Infallible>(Event::default()
+
+    let event_stream = progress_stream.map(|result| match result {
+        Ok(progress) => {
+            let data = serde_json::to_string(&progress).unwrap_or_default();
+            Ok::<Event, std::convert::Infallible>(
+                Event::default()
                     .event("progress")
                     .data(data)
-                    .id(progress.operation_id))
-            }
-            Err(e) => {
-                error!("Progress stream error: {}", e);
-                Ok::<Event, std::convert::Infallible>(Event::default()
+                    .id(progress.operation_id),
+            )
+        }
+        Err(e) => {
+            error!("Progress stream error: {}", e);
+            Ok::<Event, std::convert::Infallible>(
+                Event::default()
                     .event("error")
-                    .data(format!("Stream error: {}", e)))
-            }
+                    .data(format!("Stream error: {}", e)),
+            )
         }
     });
-    
+
     Sse::new(event_stream)
         .keep_alive(
             axum::response::sse::KeepAlive::new()
                 .interval(Duration::from_secs(30))
-                .text("keep-alive")
+                .text("keep-alive"),
         )
         .into_response()
 }
@@ -248,53 +254,67 @@ where
             error!("StreamableHTTP requested but no session manager available");
             return (
                 StatusCode::SERVICE_UNAVAILABLE,
-                "StreamableHTTP transport not available"
-            ).into_response();
+                "StreamableHTTP transport not available",
+            )
+                .into_response();
         }
     };
-    
+
     // Get or create session
-    let session_id = params.session_id.unwrap_or_else(|| Uuid::new_v4().to_string());
-    
+    let session_id = params
+        .session_id
+        .unwrap_or_else(|| Uuid::new_v4().to_string());
+
     // Get events since last event ID
     let events = if let Some(last_event_id) = &params.last_event_id {
-        match session_manager.get_events_since(&session_id, Some(last_event_id)).await {
+        match session_manager
+            .get_events_since(&session_id, Some(last_event_id))
+            .await
+        {
             Ok(events) => events,
             Err(e) => {
                 error!("Failed to get events since {}: {}", last_event_id, e);
-                return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to get session events").into_response();
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Failed to get session events",
+                )
+                    .into_response();
             }
         }
     } else {
         // No last event ID, start fresh
         Vec::new()
     };
-    
+
     // Create event stream from stored events and new events
     let stored_events = stream::iter(events.into_iter().map(|event| {
-        Ok::<Event, std::convert::Infallible>(Event::default()
-            .id(event.id)
-            .event(event.event_type)
-            .data(serde_json::to_string(&event.data).unwrap_or_default()))
+        Ok::<Event, std::convert::Infallible>(
+            Event::default()
+                .id(event.id)
+                .event(event.event_type)
+                .data(serde_json::to_string(&event.data).unwrap_or_default()),
+        )
     }));
-    
+
     // Subscribe to new events for this session
     let session_stream = session_manager.subscribe_to_session(&session_id).await;
     let new_events = session_stream.map(|event| {
-        Ok::<Event, std::convert::Infallible>(Event::default()
-            .id(event.id)
-            .event(event.event_type)
-            .data(serde_json::to_string(&event.data).unwrap_or_default()))
+        Ok::<Event, std::convert::Infallible>(
+            Event::default()
+                .id(event.id)
+                .event(event.event_type)
+                .data(serde_json::to_string(&event.data).unwrap_or_default()),
+        )
     });
-    
+
     // Combine stored and new events
     let combined_stream = stored_events.chain(new_events);
-    
+
     Sse::new(combined_stream)
         .keep_alive(
             axum::response::sse::KeepAlive::new()
                 .interval(Duration::from_secs(15))
-                .text("keep-alive")
+                .text("keep-alive"),
         )
         .into_response()
 }
@@ -309,7 +329,7 @@ where
     S: McpHandlerState,
 {
     debug!("MCP DELETE request with params: {:?}", params);
-    
+
     if let Some(session_id) = &params.session_id {
         if let Some(session_manager) = state.session_manager() {
             match session_manager.remove_session(session_id).await {
@@ -319,7 +339,11 @@ where
                 }
                 Err(e) => {
                     error!("Failed to remove session {}: {}", session_id, e);
-                    (StatusCode::INTERNAL_SERVER_ERROR, "Failed to remove session").into_response()
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "Failed to remove session",
+                    )
+                        .into_response()
                 }
             }
         } else {
@@ -336,26 +360,55 @@ where
     S: McpHandlerState + Clone + Send + Sync + 'static,
 {
     axum::Router::new()
-        .route("/mcp", axum::routing::get(|State(state): State<S>, Query(params): Query<McpQueryParams>, headers: HeaderMap| async move {
-            mcp_get_handler(State(state), Query(params), headers).await
-        }))
-        .route("/mcp", axum::routing::post(|State(state): State<S>, Query(params): Query<McpQueryParams>, headers: HeaderMap, Json(request): Json<JsonRpcRequest>| async move {
-            mcp_post_handler(State(state), Query(params), headers, Json(request)).await
-        }))
-        .route("/mcp", axum::routing::delete(|State(state): State<S>, Query(params): Query<McpQueryParams>, headers: HeaderMap| async move {
-            mcp_delete_handler(State(state), Query(params), headers).await
-        }))
-        .route("/mcp/sse", axum::routing::get(|State(state): State<S>, Query(params): Query<McpQueryParams>, headers: HeaderMap| async move {
-            mcp_sse_handler(State(state), Query(params), headers).await
-        }))
+        .route(
+            "/mcp",
+            axum::routing::get(
+                |State(state): State<S>,
+                 Query(params): Query<McpQueryParams>,
+                 headers: HeaderMap| async move {
+                    mcp_get_handler(State(state), Query(params), headers).await
+                },
+            ),
+        )
+        .route(
+            "/mcp",
+            axum::routing::post(
+                |State(state): State<S>,
+                 Query(params): Query<McpQueryParams>,
+                 headers: HeaderMap,
+                 Json(request): Json<JsonRpcRequest>| async move {
+                    mcp_post_handler(State(state), Query(params), headers, Json(request)).await
+                },
+            ),
+        )
+        .route(
+            "/mcp",
+            axum::routing::delete(
+                |State(state): State<S>,
+                 Query(params): Query<McpQueryParams>,
+                 headers: HeaderMap| async move {
+                    mcp_delete_handler(State(state), Query(params), headers).await
+                },
+            ),
+        )
+        .route(
+            "/mcp/sse",
+            axum::routing::get(
+                |State(state): State<S>,
+                 Query(params): Query<McpQueryParams>,
+                 headers: HeaderMap| async move {
+                    mcp_sse_handler(State(state), Query(params), headers).await
+                },
+            ),
+        )
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::{
-        server::{config::McpServerConfig, service::McpServer, registry::InMemoryToolRegistry},
         security::McpAuth,
+        server::{config::McpServerConfig, registry::InMemoryToolRegistry, service::McpServer},
     };
 
     // Test implementations
@@ -379,7 +432,12 @@ mod tests {
             Ok(SecurityContext::system())
         }
 
-        async fn authorize(&self, _context: &SecurityContext, _resource: &str, _action: &str) -> bool {
+        async fn authorize(
+            &self,
+            _context: &SecurityContext,
+            _resource: &str,
+            _action: &str,
+        ) -> bool {
             true
         }
     }
@@ -420,7 +478,7 @@ mod tests {
         let handler_state = TestHandlerState { server };
 
         let router: axum::Router<TestHandlerState> = mcp_routes().with_state(handler_state);
-        
+
         // Router should compile without errors
         assert_eq!(format!("{:?}", router).contains("Router"), true);
     }

@@ -10,18 +10,17 @@ pub mod service;
 
 pub use config::McpServerConfig;
 pub use handler::McpHandlerState;
-pub use progress::{ProgressReporter, ProgressUpdate, ProgressLevel};
-pub use registry::{ToolRegistry, ToolExecutionContext, McpTool, InMemoryToolRegistry};
-pub use resource::{
-    ResourceRegistry, Resource, ResourceTemplate, ResourceContent, ResourceSubscription,
-    ResourceChanged, ResourceChangeType, UriSchemeConfig, ParsedUri,
-    MultiSchemeResourceRegistry, InMemoryResourceRegistry,
-};
+pub use progress::{ProgressLevel, ProgressReporter, ProgressUpdate};
 pub use prompt::{
-    PromptRegistry, Prompt, PromptMessage, PromptContent, PromptParameter,
-    GetPromptRequest, GetPromptResult, PromptCategory, MessageRole,
-    EmbeddedResource, ResourceAnnotation, TemplateEngine, SimpleTemplateEngine,
-    InMemoryPromptRegistry,
+    EmbeddedResource, GetPromptRequest, GetPromptResult, InMemoryPromptRegistry, MessageRole,
+    Prompt, PromptCategory, PromptContent, PromptMessage, PromptParameter, PromptRegistry,
+    ResourceAnnotation, SimpleTemplateEngine, TemplateEngine,
+};
+pub use registry::{InMemoryToolRegistry, McpTool, ToolExecutionContext, ToolRegistry};
+pub use resource::{
+    InMemoryResourceRegistry, MultiSchemeResourceRegistry, ParsedUri, Resource, ResourceChangeType,
+    ResourceChanged, ResourceContent, ResourceRegistry, ResourceSubscription, ResourceTemplate,
+    UriSchemeConfig,
 };
 pub use service::McpServer;
 
@@ -31,42 +30,38 @@ use std::collections::HashMap;
 
 use crate::{
     error::{McpError, McpResult},
-    protocol::{
-        InitializeParams, InitializeResult,
-        ServerCapabilities, ServerInfo,
-        messages
-    },
-    security::{SecurityContext, McpAuth},
+    protocol::{messages, InitializeParams, InitializeResult, ServerCapabilities, ServerInfo},
+    security::{McpAuth, SecurityContext},
 };
 
 /// Core trait for MCP server state management
-/// 
+///
 /// This trait provides the foundation for building MCP servers with custom
 /// tool registries and authentication mechanisms.
 #[async_trait]
 pub trait McpServerState: Send + Sync + Clone + 'static {
     /// The tool registry implementation for this server
     type ToolRegistry: ToolRegistry;
-    
+
     /// The authentication implementation for this server
     type AuthManager: McpAuth;
 
     /// Get the tool registry instance
     fn tool_registry(&self) -> &Self::ToolRegistry;
-    
+
     /// Get the authentication manager instance
     fn auth_manager(&self) -> &Self::AuthManager;
-    
+
     /// Get the resource registry instance (optional)
     fn resource_registry(&self) -> Option<&dyn ResourceRegistry> {
         None
     }
-    
+
     /// Get the prompt registry instance (optional)
     fn prompt_registry(&self) -> Option<&dyn PromptRegistry> {
         None
     }
-    
+
     /// Get server information for the initialize response
     fn server_info(&self) -> ServerInfo {
         ServerInfo {
@@ -75,7 +70,7 @@ pub trait McpServerState: Send + Sync + Clone + 'static {
             metadata: HashMap::new(),
         }
     }
-    
+
     /// Get server capabilities
     fn server_capabilities(&self) -> ServerCapabilities {
         ServerCapabilities {
@@ -102,21 +97,20 @@ pub trait McpServerState: Send + Sync + Clone + 'static {
             batch: None,
         }
     }
-    
+
     /// Handle server initialization
     async fn initialize(&self, params: InitializeParams) -> McpResult<InitializeResult> {
         // Default implementation validates protocol version and returns capabilities
-        let protocol_version = crate::protocol::get_protocol_version_for_client(
-            &params.protocol_version
-        );
-        
+        let protocol_version =
+            crate::protocol::get_protocol_version_for_client(&params.protocol_version);
+
         Ok(InitializeResult {
             protocol_version,
             capabilities: self.server_capabilities(),
             server_info: self.server_info(),
         })
     }
-    
+
     /// Handle custom methods not covered by the standard MCP protocol
     async fn handle_custom_method(
         &self,
