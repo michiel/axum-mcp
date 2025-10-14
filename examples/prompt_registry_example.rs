@@ -11,10 +11,7 @@ use axum_mcp::{
     protocol::ServerInfo,
     server::{
         config::McpServerConfig,
-        prompt::{
-            EmbeddedResource, InMemoryPromptRegistry, PromptCategory, PromptParameter,
-            ResourceAnnotation,
-        },
+        prompt::{InMemoryPromptRegistry, PromptCategory, PromptParameter},
         resource::{InMemoryResourceRegistry, Resource, ResourceContent, UriSchemeConfig},
         service::McpServer,
     },

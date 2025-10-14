@@ -130,7 +130,7 @@ impl Default for SessionConfig {
 }
 
 /// Security configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SecurityConfig {
     /// Whether to require authentication
     pub require_auth: bool,
@@ -143,17 +143,6 @@ pub struct SecurityConfig {
 
     /// Whether to enable audit logging
     pub enable_audit: bool,
-}
-
-impl Default for SecurityConfig {
-    fn default() -> Self {
-        Self {
-            require_auth: false,
-            rate_limit: RateLimitConfig::default(),
-            cors: CorsConfig::default(),
-            enable_audit: false,
-        }
-    }
 }
 
 /// Rate limiting configuration

@@ -381,9 +381,7 @@ where
                 }
             },
             max_parallel: batch.max_parallel.map(|v| v as usize),
-            timeout: batch
-                .timeout_ms
-                .map(|ms| std::time::Duration::from_millis(ms)),
+            timeout: batch.timeout_ms.map(std::time::Duration::from_millis),
             security: context.clone(),
         };
 

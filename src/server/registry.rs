@@ -211,11 +211,7 @@ impl ToolRegistry for InMemoryToolRegistry {
             .values()
             .filter(|tool| {
                 // Filter tools based on authentication requirements
-                if tool.requires_auth && context.is_anonymous() {
-                    false
-                } else {
-                    true
-                }
+                !(tool.requires_auth && context.is_anonymous())
             })
             .map(|mcp_tool| mcp_tool.tool.clone())
             .collect();
@@ -251,11 +247,7 @@ impl ToolRegistry for InMemoryToolRegistry {
 
     async fn can_access_tool(&self, name: &str, context: &SecurityContext) -> bool {
         if let Some(tool) = self.tools.get(name) {
-            if tool.requires_auth && context.is_anonymous() {
-                false
-            } else {
-                true
-            }
+            !(tool.requires_auth && context.is_anonymous())
         } else {
             false
         }

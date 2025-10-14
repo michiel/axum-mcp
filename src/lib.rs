@@ -278,11 +278,9 @@ pub mod axum_integration {
             self.session_manager.as_ref()
         }
 
-        fn transport_health(&self) -> impl std::future::Future<Output = TransportHealth> + Send {
-            async {
-                // TODO: Implement actual health check based on server state
-                TransportHealth::healthy()
-            }
+        async fn transport_health(&self) -> TransportHealth {
+            // TODO: Implement actual health check based on server state
+            TransportHealth::healthy()
         }
     }
 

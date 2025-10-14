@@ -340,7 +340,7 @@ impl McpAuthManager {
         sessions.retain(|_, context| {
             context
                 .authenticated_at
-                .map_or(false, |auth_time| auth_time > cutoff)
+                .is_some_and(|auth_time| auth_time > cutoff)
         });
     }
 }

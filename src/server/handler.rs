@@ -194,10 +194,10 @@ where
 
     if is_claude_desktop {
         info!("Claude Desktop client detected, using StreamableHTTP transport");
-        return handle_streamable_http_sse(state, params, headers).await;
+        handle_streamable_http_sse(state, params, headers).await
     } else {
         info!("Standard SSE client detected");
-        return handle_standard_sse(state, params, headers).await;
+        handle_standard_sse(state, params, headers).await
     }
 }
 
