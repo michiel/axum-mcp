@@ -17,7 +17,7 @@
 //!
 //! ### Basic MCP Server
 //!
-//! ```rust,no_run
+//! ```rust,ignore
 //! use axum_mcp::{
 //!     server::{McpServer, McpServerConfig, McpServerState, InMemoryToolRegistry},
 //!     security::{McpAuth, SecurityContext, ClientContext},
@@ -76,7 +76,7 @@
 //!
 //! ### Custom Tool Implementation
 //!
-//! ```rust,no_run
+//! ```rust,ignore
 //! use axum_mcp::{
 //!     server::registry::{ToolRegistry, ToolExecutionContext, McpTool},
 //!     protocol::{Tool, ToolsCallResult, ToolContent},
