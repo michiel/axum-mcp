@@ -407,9 +407,9 @@ where
 mod tests {
     use super::*;
     use crate::{
-        McpResult,
         security::McpAuth,
         server::{config::McpServerConfig, registry::InMemoryToolRegistry, service::McpServer},
+        McpResult,
     };
 
     // Test implementations
